@@ -3,7 +3,7 @@ import { supabase, supabaseConfigured } from './lib/supabase';
 import {
   Activity, ArrowDownToLine, BarChart3, Boxes, CalendarDays, CheckCircle2,
   ChevronRight, ClipboardList, Gauge, LogOut, MapPinned, Menu, Package,
-  Settings, ShieldCheck, ShoppingCart, Target, Users, X
+  Settings, ShieldCheck, ShoppingCart, Target, Users, X, Plus, Trash2, RefreshCw
 } from 'lucide-react';
 
 const navItems = [
@@ -54,6 +54,75 @@ function Login({ onLogin }) {
       <p className="footnote">শুধু অনুমোদিত কর্মীদের জন্য। আপনার পাসওয়ার্ড কারও সঙ্গে শেয়ার করবেন না।</p>
     </section>
   </main>;
+}
+
+
+function AdminPanel({ isAdmin }) {
+  const [menus,setMenus]=useState([]);
+  const [permissions,setPermissions]=useState([]);
+  const [roles,setRoles]=useState([]);
+  const [label,setLabel]=useState('');
+  const [key,setKey]=useState('');
+  const [loading,setLoading]=useState(true);
+  const [busy,setBusy]=useState(false);
+  const [error,setError]=useState('');
+  const [notice,setNotice]=useState('');
+  const load=async()=>{
+    setLoading(true);setError('');
+    const [m,p,r]=await Promise.all([
+      supabase.from('menu_definitions').select('id,menu_key,label,enabled,sort_order').order('sort_order'),
+      supabase.from('menu_permissions').select('menu_id,role,can_view,can_edit,can_delete,can_approve'),
+      supabase.from('profiles').select('role')
+    ]);
+    if(m.error)setError('Menu: '+m.error.message);else setMenus(m.data||[]);
+    if(p.error)setError(old=>[old,'Permission: '+p.error.message].filter(Boolean).join(' | '));else setPermissions(p.data||[]);
+    if(r.error)setError(old=>[old,'Role: '+r.error.message].filter(Boolean).join(' | '));else setRoles([...new Set((r.data||[]).map(x=>x.role).filter(Boolean).map(String))]);
+    setLoading(false);
+  };
+  useEffect(()=>{load();},[]);
+  const add=async e=>{
+    e.preventDefault();setError('');setNotice('');
+    if(!isAdmin)return setError('শুধু RSM Admin এই কাজ করতে পারবেন।');
+    const menuKey=key.trim().toLowerCase().replace(/[^a-z0-9_-]/g,'-');
+    if(!label.trim()||!menuKey)return setError('মডিউলের নাম ও Key দিন।');
+    setBusy(true);
+    const {data,error}=await supabase.from('menu_definitions').insert({menu_key:menuKey,label:label.trim(),enabled:true,sort_order:menus.length+1}).select('id,menu_key,label,enabled,sort_order').single();
+    setBusy(false);
+    if(error)setError('সংরক্ষণ হয়নি। Supabase RLS INSERT policy প্রয়োজন: '+error.message);
+    else{setMenus(old=>[...old,data]);setLabel('');setKey('');setNotice('মডিউল যোগ হয়েছে।');}
+  };
+  const toggle=async menu=>{
+    const {error}=await supabase.from('menu_definitions').update({enabled:!menu.enabled}).eq('id',menu.id);
+    if(error)setError('আপডেট হয়নি। RLS UPDATE policy প্রয়োজন: '+error.message);
+    else{setMenus(old=>old.map(x=>x.id===menu.id?{...x,enabled:!x.enabled}:x));setNotice('মডিউল আপডেট হয়েছে।');}
+  };
+  const remove=async menu=>{
+    if(!window.confirm(menu.label+' মুছে ফেলবেন?'))return;
+    const {error}=await supabase.from('menu_definitions').delete().eq('id',menu.id);
+    if(error)setError('মুছতে পারেনি। Permission row বা RLS DELETE policy পরীক্ষা করুন: '+error.message);
+    else{setMenus(old=>old.filter(x=>x.id!==menu.id));setPermissions(old=>old.filter(x=>x.menu_id!==menu.id));setNotice('মডিউল মুছে ফেলা হয়েছে।');}
+  };
+  const setPermission=async(menuId,role,field,value)=>{
+    const old=permissions.find(x=>x.menu_id===menuId&&String(x.role)===role);
+    const row={menu_id:menuId,role,can_view:old?.can_view??false,can_edit:old?.can_edit??false,can_delete:old?.can_delete??false,can_approve:old?.can_approve??false,[field]:value};
+    const {data,error}=await supabase.from('menu_permissions').upsert(row,{onConflict:'menu_id,role'}).select('menu_id,role,can_view,can_edit,can_delete,can_approve').single();
+    if(error)setError('Permission সংরক্ষণ হয়নি। RLS INSERT/UPDATE policy এবং menu_id+role unique constraint প্রয়োজন: '+error.message);
+    else{setPermissions(list=>[...list.filter(x=>!(x.menu_id===menuId&&String(x.role)===role)),data]);setNotice('Permission সংরক্ষণ হয়েছে।');}
+  };
+  return <div className="admin-area">
+    <div className="notice"><ShieldCheck size={19}/><div><strong>Admin Panel · মডিউল ও Role Permission</strong><p>মডিউল যোগ, চালু/বন্ধ এবং Role অনুযায়ী View, Edit, Delete ও Approve Access নিয়ন্ত্রণ করুন।</p></div></div>
+    {!isAdmin&&<div className="admin-alert">শুধু RSM Role এই Admin Panel পরিচালনা করতে পারবে।</div>}
+    {error&&<div className="admin-alert">{error}</div>}{notice&&<div className="admin-success">{notice}</div>}
+    <section className="admin-panel-card"><div className="admin-card-heading"><div><h2>নতুন মডিউল যোগ করুন</h2><p>নতুন মেনু তৈরি করতে নাম ও Key দিন।</p></div><Plus/></div>
+      <form className="admin-create-form" onSubmit={add}><label>মডিউলের নাম<input value={label} onChange={e=>setLabel(e.target.value)} placeholder="যেমন: কালেকশন" required/></label><label>মডিউল Key<input value={key} onChange={e=>setKey(e.target.value)} placeholder="যেমন: collection" required/></label><button className="primary-btn" disabled={!isAdmin||busy}>{busy?'সংরক্ষণ হচ্ছে…':'মডিউল যোগ করুন'} <Plus size={16}/></button></form>
+    </section>
+    <div className="section-title"><h2>মডিউল ও Permission</h2><button className="admin-refresh" onClick={load}><RefreshCw size={14}/> রিফ্রেশ</button></div>
+    {loading?<div className="team-list-card"><p className="area-state">লোড হচ্ছে…</p></div>:menus.length===0?<div className="team-list-card"><p className="area-state">menu_definitions টেবিলে কোনো মডিউল নেই।</p></div>:menus.map(menu=><section className="admin-panel-card" key={menu.id}>
+      <div className="admin-menu-head"><div><strong>{menu.label}</strong><small>{menu.menu_key} · Sort: {menu.sort_order}</small></div><div className="admin-menu-actions"><span className={menu.enabled?'member-active':'member-inactive'}>{menu.enabled?'চালু':'বন্ধ'}</span><button disabled={!isAdmin} onClick={()=>toggle(menu)}>{menu.enabled?'বন্ধ করুন':'চালু করুন'}</button><button className="admin-delete" disabled={!isAdmin} onClick={()=>remove(menu)}><Trash2 size={15}/></button></div></div>
+      <div className="permission-table-wrap"><table className="permission-table"><thead><tr><th>Role</th><th>View</th><th>Edit</th><th>Delete</th><th>Approve</th></tr></thead><tbody>{roles.map(role=>{const p=permissions.find(x=>x.menu_id===menu.id&&String(x.role)===role);return <tr key={role}><td>{role}</td>{['can_view','can_edit','can_delete','can_approve'].map(field=><td key={field}><input type="checkbox" disabled={!isAdmin} checked={!!p?.[field]} onChange={e=>setPermission(menu.id,role,field,e.target.checked)}/></td>)}</tr>})}</tbody></table></div>
+    </section>)}
+    <p className="admin-footnote">Supabase RLS-এ INSERT, UPDATE ও DELETE অনুমতি না থাকলে পরিবর্তন সংরক্ষিত হবে না। বিদ্যমান নিরাপত্তা নীতি বাইপাস করা হচ্ছে না।</p>
+  </div>;
 }
 
 function AppShell({ session }) {
@@ -135,7 +204,7 @@ function AppShell({ session }) {
           </div>
           <div className="section-title"><h2>মডিউলসমূহ</h2><span>যেকোনো মডিউলে চাপ দিন</span></div>
           <div className="module-grid">{navItems.slice(1,8).map(item=>{const Icon=item.icon;return <button className="module-card" key={item.label} onClick={()=>setActive(item.label)}><span className="module-icon"><Icon size={21}/></span><strong>{item.label}</strong><span className="module-arrow"><ChevronRight size={18}/></span></button>})}</div>
-        </> : active === 'টিম / ইউজার' ? <>
+        </> : active === 'সেটিংস' ? <AdminPanel isAdmin={String(profile?.role || '').toUpperCase() === 'RSM'} /> : active === 'টিম / ইউজার' ? <>
           <div className="notice"><Users size={19}/><div><strong>কর্মী তালিকা</strong><p>Supabase-এর profiles টেবিল থেকে অনুমোদিত কর্মীদের তথ্য দেখানো হচ্ছে। বর্তমানে নতুন কর্মী যোগ করার ফর্ম চালু করা হয়নি।</p></div></div>
           <div className="section-title"><h2>Registered Users</h2><span>{team.length.toLocaleString('bn-BD')} জন</span></div>
           <div className="team-list-card">
