@@ -18,3 +18,18 @@
 
 /* Configurable nested menu options */
 .nav-group{display:grid;gap:2px}.nav-subitem{display:flex;align-items:center;gap:10px;margin:0 0 3px 29px;padding:8px 9px;border:0;border-left:1px solid #ffffff28;background:transparent;color:#9fb7bd;text-align:left;font-size:11px;border-radius:0 7px 7px 0}.nav-subitem:hover,.nav-subitem.active{background:#ffffff10;color:#fff}.nav-subdot{width:5px;height:5px;border-radius:50%;background:#6f9a9b;flex:none}.nav-subitem.active .nav-subdot{background:#50d8bf}.admin-create-form select{width:100%;min-width:0;border:1px solid #dce5ea;border-radius:9px;padding:11px 12px;outline:none;background:#fff;color:#294653}.admin-create-form select:focus{border-color:#15988a;box-shadow:0 0 0 3px #15988a18}
+
+
+/* Employee creation and Excel import */
+.employee-form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:end;margin-top:16px}
+.employee-form label{display:grid;gap:6px;font-size:11px;font-weight:600;color:#526a74}
+.employee-form input,.employee-form select,.employee-search input{width:100%;min-width:0;border:1px solid #dce5ea;border-radius:9px;padding:11px 12px;outline:none;background:#fff;color:#294653}
+.employee-form input:focus,.employee-form select:focus,.employee-search input:focus{border-color:#15988a;box-shadow:0 0 0 3px #15988a18}
+.employee-form .primary-btn{white-space:nowrap}
+.employee-upload-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:16px}
+.employee-upload-row input[type=file]{flex:1;min-width:180px;font-size:11px;color:#61747d}
+.employee-upload-row .primary-btn{white-space:nowrap;font-size:11px}
+.employee-list-tools{display:flex;align-items:center;gap:10px;color:#91a0a8;font-size:11px}
+.employee-search{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e5ecef;border-radius:10px;padding:0 10px;margin-bottom:10px;color:#82949b}
+.employee-search input{border:0;box-shadow:none!important}
+@media(max-width:760px){.employee-form{grid-template-columns:1fr}.employee-upload-row{align-items:stretch;flex-direction:column}.employee-upload-row>*{width:100%}.employee-upload-row input[type=file]{padding:8px 0}.employee-list-tools{gap:6px}}
