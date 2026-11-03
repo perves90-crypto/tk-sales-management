@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase, supabaseConfigured } from './lib/supabase';
+import EmployeeManager from './EmployeeManager';
 import {
   Activity, ArrowDownToLine, BarChart3, Boxes, CalendarDays, CheckCircle2,
   ChevronRight, ClipboardList, Gauge, LogOut, MapPinned, Menu, Package,
@@ -210,13 +211,7 @@ function AppShell({ session }) {
           </div>
           <div className="section-title"><h2>মডিউলসমূহ</h2><span>যেকোনো মডিউলে চাপ দিন</span></div>
           <div className="module-grid">{navItems.slice(1,8).map(item=>{const Icon=item.icon;return <button className="module-card" key={item.label} onClick={()=>setActive(item.label)}><span className="module-icon"><Icon size={21}/></span><strong>{item.label}</strong><span className="module-arrow"><ChevronRight size={18}/></span></button>})}</div>
-        </> : active === 'সেটিংস' ? <AdminPanel isAdmin={String(profile?.role || '').toUpperCase() === 'RSM'} /> : active === 'টিম / ইউজার' ? <>
-          <div className="notice"><Users size={19}/><div><strong>কর্মী তালিকা</strong><p>Supabase-এর profiles টেবিল থেকে অনুমোদিত কর্মীদের তথ্য দেখানো হচ্ছে। বর্তমানে নতুন কর্মী যোগ করার ফর্ম চালু করা হয়নি।</p></div></div>
-          <div className="section-title"><h2>Registered Users</h2><span>{team.length.toLocaleString('bn-BD')} জন</span></div>
-          <div className="team-list-card">
-            {teamLoading ? <p className="area-state">কর্মীদের তথ্য লোড হচ্ছে…</p> : teamError ? <p className="area-state area-error">তথ্য আনা যায়নি: {teamError}</p> : team.length === 0 ? <p className="area-state">আপনার Role অনুযায়ী কোনো কর্মী দেখার অনুমতি পাওয়া যায়নি।</p> : team.map(member => <div className="team-row" key={member.id}><div className="avatar">{(member.full_name || 'U').slice(0,1)}</div><div className="team-details"><strong>{member.full_name || 'নাম দেওয়া হয়নি'}</strong><small>Employee ID: {member.employee_id || '—'} · Role: {member.role || '—'}</small></div><span className={member.active ? 'member-active' : 'member-inactive'}>{member.active ? 'সক্রিয়' : 'নিষ্ক্রিয়'}</span></div>)}
-          </div>
-        </> : <>
+        </> : active === 'সেটিংস' ? <AdminPanel isAdmin={String(profile?.role || '').toUpperCase() === 'RSM'} /> : active === 'টিম / ইউজার' ? <EmployeeManager isAdmin={String(profile?.role || '').toUpperCase() === 'RSM'} areas={areas} /> : <>
           <div className="module-detail-card"><div className="module-detail-icon">{(() => { const Icon = navItems.find(item=>item.label===active)?.icon || ClipboardList; return <Icon size={26}/>; })()}</div><h2>{active}</h2><p>এই মডিউলের জন্য প্রয়োজনীয় ফর্ম ও কার্যক্রম পরবর্তী ধাপে যুক্ত করা হবে। বিদ্যমান ডেটাবেজে এই মডিউলের পূর্ণাঙ্গ টেবিল/কলাম নেই অথবা এখনো ডেটা এন্ট্রি চালু করা হয়নি।</p><button className="primary-btn" onClick={()=>setActive('ড্যাশবোর্ড')}>ড্যাশবোর্ডে ফিরে যান <ChevronRight size={17}/></button></div>
         </>}
         <div className="integration-card"><div className="integration-icon"><Package size={22}/></div><div><strong>Supabase সংযোগ</strong><p>{supabaseConfigured ? 'Supabase client সংযুক্ত। তথ্য RLS নীতিমালা মেনে আনা হচ্ছে।' : 'Supabase configuration পাওয়া যায়নি।'}</p></div><span className={'connection-badge '+(supabaseConfigured?'connected':'pending')}>{supabaseConfigured?'Configured':'Pending'}</span></div>
