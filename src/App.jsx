@@ -60,6 +60,28 @@ function AppShell({ session }) {
   const [active, setActive] = useState('ড্যাশবোর্ড');
   const [mobileNav, setMobileNav] = useState(false);
   const [userEmail, setUserEmail] = useState(session?.user?.email || '');
+  const [areas, setAreas] = useState([]);
+  const [areasLoading, setAreasLoading] = useState(true);
+  const [areasError, setAreasError] = useState('');
+  const [profile, setProfile] = useState(null);
+  useEffect(() => {
+    let mounted = true;
+    const loadDashboardData = async () => {
+      if (!supabase || !session?.user?.id) { if (mounted) setAreasLoading(false); return; }
+      setAreasLoading(true);
+      const [areaResult, profileResult] = await Promise.all([
+        supabase.from('areas').select('id,name,active').order('name', { ascending: true }),
+        supabase.from('profiles').select('full_name,employee_id,role,area_id').eq('id', session.user.id).maybeSingle()
+      ]);
+      if (!mounted) return;
+      if (areaResult.error) setAreasError(areaResult.error.message);
+      else setAreas(areaResult.data || []);
+      if (!profileResult.error) setProfile(profileResult.data);
+      setAreasLoading(false);
+    };
+    loadDashboardData();
+    return () => { mounted = false; };
+  }, [session?.user?.id]);
   useEffect(() => {
     if (!supabase) return;
     const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => setUserEmail(nextSession?.user?.email || ''));
@@ -78,7 +100,7 @@ function AppShell({ session }) {
     <main className="main-area">
       <header className="topbar"><button className="menu-toggle" onClick={()=>setMobileNav(true)}><Menu/></button><div className="crumb">Sales Management <ChevronRight size={14}/> <strong>{active}</strong></div><div className="top-right"><span className="today"><CalendarDays size={16}/> {new Intl.DateTimeFormat('bn-BD',{day:'numeric',month:'short',year:'numeric',timeZone:'Asia/Dhaka'}).format(new Date())}</span><div className="avatar">R</div></div></header>
       <section className="content">
-        <div className="welcome-row"><div><p className="eyebrow">T.K FOOD PRODUCTS DISTRIBUTION LIMITED</p><h1>{active}</h1><p className="muted">Jashore Region · Pusti Consumer Division</p></div><div className="status-chip"><CheckCircle2 size={16}/> অ্যাপ ইন্টারফেস প্রস্তুত</div></div>
+        <div className="welcome-row"><div><p className="eyebrow">T.K FOOD PRODUCTS DISTRIBUTION LIMITED</p><h1>{active}</h1><p className="muted">Jashore Region · Pusti Consumer Division{profile?.full_name ? ` · ${profile.full_name}` : ''}{profile?.role ? ` · ${profile.role}` : ''}</p></div><div className="status-chip"><CheckCircle2 size={16}/> অ্যাপ ইন্টারফেস প্রস্তুত</div></div>
         <div className="notice"><Activity size={19}/><div><strong>প্রাথমিক অ্যাপ কাঠামো</strong><p>এই স্ক্রিনে কোনো বিক্রয় সংখ্যা ডেমো হিসেবে দেখানো হয়নি। বাস্তব রিপোর্ট চালু করতে বিদ্যমান Supabase টেবিল ও কলাম যাচাই করে সংযোগ দিতে হবে।</p></div></div>
         <div className="section-title"><h2>রিজিয়ন ওভারভিউ</h2><span>বাস্তব ডেটা সংযোগের অপেক্ষায়</span></div>
         <div className="stats-grid">
@@ -86,6 +108,13 @@ function AppShell({ session }) {
           <Stat icon={Target} title="Target Achievement" value="—" note="টার্গেট ডেটা প্রয়োজন"/>
           <Stat icon={Users} title="Sales Team" value="—" note="টিম ডেটা সংযুক্ত নয়"/>
           <Stat icon={ArrowDownToLine} title="Undelivered" value="—" note="অর্ডার ডেটা প্রয়োজন"/>
+        </div>
+        <div className="section-title"><h2>এরিয়া তালিকা</h2><span>Supabase থেকে সরাসরি</span></div>
+        <div className="area-list-card">
+          {areasLoading ? <p className="area-state">এরিয়ার তথ্য লোড হচ্ছে…</p> : areasError ? <p className="area-state area-error">এরিয়ার তথ্য আনা যায়নি: {areasError}</p> : areas.length === 0 ? <p className="area-state">কোনো এরিয়া পাওয়া যায়নি।</p> : <>
+            <div className="area-summary"><strong>{areas.length.toLocaleString('bn-BD')}</strong><span>টি এরিয়া পাওয়া গেছে</span></div>
+            <div className="area-chips">{areas.map(area => <div className="area-chip" key={area.id}><span className="area-dot"/><strong>{area.name}</strong><small>{area.active ? 'সক্রিয়' : 'নিষ্ক্রিয়'}</small></div>)}</div>
+          </>}
         </div>
         <div className="section-title"><h2>মডিউলসমূহ</h2><span>মেনু থেকে মডিউল বাছাই করুন</span></div>
         <div className="module-grid">{navItems.slice(1,8).map(item=>{const Icon=item.icon;return <button className="module-card" key={item.label} onClick={()=>setActive(item.label)}><span className="module-icon"><Icon size={21}/></span><strong>{item.label}</strong><span className="module-arrow"><ChevronRight size={18}/></span></button>})}</div>
