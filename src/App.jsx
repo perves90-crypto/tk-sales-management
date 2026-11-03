@@ -63,6 +63,8 @@ function AdminPanel({ isAdmin }) {
   const [roles,setRoles]=useState([]);
   const [label,setLabel]=useState('');
   const [key,setKey]=useState('');
+  const [parentKey,setParentKey]=useState('daily-sales');
+  const parentMenus=[{key:'daily-sales',label:'দৈনিক সেলস রিপোর্ট'},{key:'order-entry',label:'অর্ডার এন্ট্রি'},{key:'market-visit',label:'মার্কেট ভিজিট'},{key:'target-achievement',label:'টার্গেট ও অ্যাচিভমেন্ট'},{key:'team-users',label:'টিম / ইউজার'},{key:'stock-sku',label:'স্টক ও SKU'},{key:'reports',label:'রিপোর্টস'}];
   const [loading,setLoading]=useState(true);
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState('');
@@ -70,7 +72,7 @@ function AdminPanel({ isAdmin }) {
   const load=async()=>{
     setLoading(true);setError('');
     const [m,p,r]=await Promise.all([
-      supabase.from('menu_definitions').select('id,menu_key,label,enabled,sort_order').order('sort_order'),
+      supabase.from('menu_definitions').select('id,menu_key,label,enabled,sort_order,parent_menu_key').order('sort_order'),
       supabase.from('menu_permissions').select('menu_id,role,can_view,can_edit,can_delete,can_approve'),
       supabase.from('profiles').select('role')
     ]);
@@ -88,7 +90,7 @@ function AdminPanel({ isAdmin }) {
     setBusy(true);
     const {data:{user},error:userError}=await supabase.auth.getUser();
     if(userError||!user){setBusy(false);setError('লগইন সেশন পাওয়া যায়নি। আবার লগইন করুন।');return;}
-    const {data,error}=await supabase.from('menu_definitions').insert({menu_key:menuKey,label:label.trim(),enabled:true,sort_order:menus.length+1,created_by:user.id}).select('id,menu_key,label,enabled,sort_order').single();
+    const {data,error}=await supabase.from('menu_definitions').insert({menu_key:menuKey,label:label.trim(),parent_menu_key:parentKey,enabled:true,sort_order:menus.filter(x=>x.parent_menu_key===parentKey).length+1,created_by:user.id}).select('id,menu_key,label,enabled,sort_order,parent_menu_key').single();
     setBusy(false);
     if(error)setError('সংরক্ষণ হয়নি। Supabase RLS INSERT policy প্রয়োজন: '+error.message);
     else{setMenus(old=>[...old,data]);setLabel('');setKey('');setNotice('মডিউল যোগ হয়েছে।');}
@@ -115,12 +117,12 @@ function AdminPanel({ isAdmin }) {
     <div className="notice"><ShieldCheck size={19}/><div><strong>Admin Panel · মডিউল ও Role Permission</strong><p>মডিউল যোগ, চালু/বন্ধ এবং Role অনুযায়ী View, Edit, Delete ও Approve Access নিয়ন্ত্রণ করুন।</p></div></div>
     {!isAdmin&&<div className="admin-alert">শুধু RSM Role এই Admin Panel পরিচালনা করতে পারবে।</div>}
     {error&&<div className="admin-alert">{error}</div>}{notice&&<div className="admin-success">{notice}</div>}
-    <section className="admin-panel-card"><div className="admin-card-heading"><div><h2>নতুন মডিউল যোগ করুন</h2><p>নতুন মেনু তৈরি করতে নাম ও Key দিন।</p></div><Plus/></div>
-      <form className="admin-create-form" onSubmit={add}><label>মডিউলের নাম<input value={label} onChange={e=>setLabel(e.target.value)} placeholder="যেমন: কালেকশন" required/></label><label>মডিউল Key<input value={key} onChange={e=>setKey(e.target.value)} placeholder="যেমন: collection" required/></label><button className="primary-btn" disabled={!isAdmin||busy}>{busy?'সংরক্ষণ হচ্ছে…':'মডিউল যোগ করুন'} <Plus size={16}/></button></form>
+    <section className="admin-panel-card"><div className="admin-card-heading"><div><h2>মেনুর ভিতরে নতুন অপশন তৈরি করুন</h2><p>প্রথমে কোন মেনুর ভিতরে অপশনটি থাকবে সেটি নির্বাচন করুন।</p></div><Plus/></div>
+      <form className="admin-create-form" onSubmit={add}><label>যে মেনুর ভিতরে যোগ হবে<select value={parentKey} onChange={e=>setParentKey(e.target.value)}>{parentMenus.map(x=><option key={x.key} value={x.key}>{x.label}</option>)}</select></label><label>নতুন অপশনের নাম<input value={label} onChange={e=>setLabel(e.target.value)} placeholder="যেমন: দৈনিক অর্ডার সারাংশ" required/></label><label>অপশন Key<input value={key} onChange={e=>setKey(e.target.value)} placeholder="যেমন: daily-order-summary" required/></label><button className="primary-btn" disabled={!isAdmin||busy}>{busy?'সংরক্ষণ হচ্ছে…':'অপশন যোগ করুন'} <Plus size={16}/></button></form>
     </section>
-    <div className="section-title"><h2>মডিউল ও Permission</h2><button className="admin-refresh" onClick={load}><RefreshCw size={14}/> রিফ্রেশ</button></div>
+    <div className="section-title"><h2>তৈরি করা অপশনসমূহ</h2><button className="admin-refresh" onClick={load}><RefreshCw size={14}/> রিফ্রেশ</button></div>
     {loading?<div className="team-list-card"><p className="area-state">লোড হচ্ছে…</p></div>:menus.length===0?<div className="team-list-card"><p className="area-state">menu_definitions টেবিলে কোনো মডিউল নেই।</p></div>:menus.map(menu=><section className="admin-panel-card" key={menu.id}>
-      <div className="admin-menu-head"><div><strong>{menu.label}</strong><small>{menu.menu_key} · Sort: {menu.sort_order}</small></div><div className="admin-menu-actions"><span className={menu.enabled?'member-active':'member-inactive'}>{menu.enabled?'চালু':'বন্ধ'}</span><button disabled={!isAdmin} onClick={()=>toggle(menu)}>{menu.enabled?'বন্ধ করুন':'চালু করুন'}</button><button className="admin-delete" disabled={!isAdmin} onClick={()=>remove(menu)}><Trash2 size={15}/></button></div></div>
+      <div className="admin-menu-head"><div><strong>{menu.label}</strong><small>{parentMenus.find(x=>x.key===menu.parent_menu_key)?.label || 'অজানা মেনু'} · {menu.menu_key} · Sort: {menu.sort_order}</small></div><div className="admin-menu-actions"><span className={menu.enabled?'member-active':'member-inactive'}>{menu.enabled?'চালু':'বন্ধ'}</span><button disabled={!isAdmin} onClick={()=>toggle(menu)}>{menu.enabled?'বন্ধ করুন':'চালু করুন'}</button><button className="admin-delete" disabled={!isAdmin} onClick={()=>remove(menu)}><Trash2 size={15}/></button></div></div>
       <div className="permission-table-wrap"><table className="permission-table"><thead><tr><th>Role</th><th>View</th><th>Edit</th><th>Delete</th><th>Approve</th></tr></thead><tbody>{roles.map(role=>{const p=permissions.find(x=>x.menu_id===menu.id&&String(x.role)===role);return <tr key={role}><td>{role}</td>{['can_view','can_edit','can_delete','can_approve'].map(field=><td key={field}><input type="checkbox" disabled={!isAdmin} checked={!!p?.[field]} onChange={e=>setPermission(menu.id,role,field,e.target.checked)}/></td>)}</tr>})}</tbody></table></div>
     </section>)}
     <p className="admin-footnote">Supabase RLS-এ INSERT, UPDATE ও DELETE অনুমতি না থাকলে পরিবর্তন সংরক্ষিত হবে না। বিদ্যমান নিরাপত্তা নীতি বাইপাস করা হচ্ছে না।</p>
@@ -135,6 +137,7 @@ function AppShell({ session }) {
   const [areasLoading, setAreasLoading] = useState(true);
   const [areasError, setAreasError] = useState('');
   const [profile, setProfile] = useState(null);
+  const [configuredMenus,setConfiguredMenus]=useState([]);
   const [team, setTeam] = useState([]);
   const [teamLoading, setTeamLoading] = useState(false);
   const [teamError, setTeamError] = useState('');
@@ -154,6 +157,7 @@ function AppShell({ session }) {
       setAreasLoading(false);
     };
     loadDashboardData();
+    supabase.from('menu_definitions').select('id,menu_key,label,enabled,sort_order,parent_menu_key').eq('enabled',true).order('sort_order').then(({data})=>{if(mounted)setConfiguredMenus(data||[]);});
     return () => { mounted = false; };
   }, [session?.user?.id]);
   useEffect(() => {
@@ -181,7 +185,7 @@ function AppShell({ session }) {
       <div className="sidebar-brand"><div className="brand-small">T.K</div><div><strong>TK Sales</strong><small>Management Portal</small></div><button className="close-nav" onClick={()=>setMobileNav(false)}><X/></button></div>
       <div className="region-pill"><span className="live-dot"></span> Jashore Region</div>
       <p className="nav-caption">MAIN MENU</p>
-      <nav>{navItems.map(item => {const Icon=item.icon; return <button key={item.label} className={'nav-item '+(active===item.label?'active':'')} onClick={()=>{setActive(item.label);setMobileNav(false)}}><Icon size={18}/><span>{item.label}</span>{active===item.label&&<span className="nav-indicator"/>}</button>})}</nav>
+      <nav>{navItems.map(item => {const Icon=item.icon; const parent=({ 'দৈনিক সেলস রিপোর্ট':'daily-sales','অর্ডার এন্ট্রি':'order-entry','মার্কেট ভিজিট':'market-visit','টার্গেট ও অ্যাচিভমেন্ট':'target-achievement','টিম / ইউজার':'team-users','স্টক ও SKU':'stock-sku','রিপোর্টস':'reports'})[item.label]; const children=configuredMenus.filter(x=>x.parent_menu_key===parent); return <div className="nav-group" key={item.label}><button className={'nav-item '+(active===item.label?'active':'')} onClick={()=>{setActive(item.label);setMobileNav(false)}}><Icon size={18}/><span>{item.label}</span>{active===item.label&&<span className="nav-indicator"/>}</button>{children.map(child=><button key={child.id} className={'nav-subitem '+(active===child.label?'active':'')} onClick={()=>{setActive(child.label);setMobileNav(false)}}><span className="nav-subdot"/><span>{child.label}</span></button>)}</div>})}</nav>
       <div className="sidebar-bottom"><div className="profile-mini"><div className="avatar">R</div><div className="profile-copy"><strong>RSM Account</strong><small>{userEmail || 'Signed in user'}</small></div></div><button className="signout" onClick={signOut}><LogOut size={17}/> লগআউট</button></div>
     </aside>
     <main className="main-area">
