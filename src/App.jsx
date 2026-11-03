@@ -32,7 +32,8 @@ function Login({ onLogin }) {
       return;
     }
     setBusy(true);
-    const { data, error: loginError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    const loginEmail = email.trim().includes('@') ? email.trim() : email.trim() + '@login.tk-sales.internal';
+    const { data, error: loginError } = await supabase.auth.signInWithPassword({ email: loginEmail, password });
     setBusy(false);
     if (loginError) setError('লগইন হয়নি: ইমেইল/পাসওয়ার্ড যাচাই করুন অথবা Supabase Auth সেটিং দেখুন।');
     else onLogin(data.session);
@@ -45,8 +46,8 @@ function Login({ onLogin }) {
       <p className="muted">Pusti Consumer Division · Sales Force Portal</p>
       <div className="secure-note"><ShieldCheck size={18}/> নিরাপদ কর্মী লগইন</div>
       <form onSubmit={submit}>
-        <label>ইমেইল</label>
-        <input type="email" autoComplete="username" placeholder="আপনার নিবন্ধিত Gmail" value={email} onChange={e=>setEmail(e.target.value)} required />
+        <label>Employee ID / Gmail</label>
+        <input type="text" autoComplete="username" placeholder="Employee ID অথবা নিবন্ধিত Gmail" value={email} onChange={e=>setEmail(e.target.value)} required />
         <label>পাসওয়ার্ড</label>
         <input type="password" autoComplete="current-password" placeholder="পাসওয়ার্ড লিখুন" value={password} onChange={e=>setPassword(e.target.value)} required />
         {error && <div className="error-box">{error}</div>}
