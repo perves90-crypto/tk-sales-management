@@ -86,7 +86,9 @@ function AdminPanel({ isAdmin }) {
     const menuKey=key.trim().toLowerCase().replace(/[^a-z0-9_-]/g,'-');
     if(!label.trim()||!menuKey)return setError('মডিউলের নাম ও Key দিন।');
     setBusy(true);
-    const {data,error}=await supabase.from('menu_definitions').insert({menu_key:menuKey,label:label.trim(),enabled:true,sort_order:menus.length+1}).select('id,menu_key,label,enabled,sort_order').single();
+    const {data:{user},error:userError}=await supabase.auth.getUser();
+    if(userError||!user){setBusy(false);setError('লগইন সেশন পাওয়া যায়নি। আবার লগইন করুন।');return;}
+    const {data,error}=await supabase.from('menu_definitions').insert({menu_key:menuKey,label:label.trim(),enabled:true,sort_order:menus.length+1,created_by:user.id}).select('id,menu_key,label,enabled,sort_order').single();
     setBusy(false);
     if(error)setError('সংরক্ষণ হয়নি। Supabase RLS INSERT policy প্রয়োজন: '+error.message);
     else{setMenus(old=>[...old,data]);setLabel('');setKey('');setNotice('মডিউল যোগ হয়েছে।');}
