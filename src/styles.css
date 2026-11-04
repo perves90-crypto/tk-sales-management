@@ -33,3 +33,19 @@
 .employee-search{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e5ecef;border-radius:10px;padding:0 10px;margin-bottom:10px;color:#82949b}
 .employee-search input{border:0;box-shadow:none!important}
 @media(max-width:760px){.employee-form{grid-template-columns:1fr}.employee-upload-row{align-items:stretch;flex-direction:column}.employee-upload-row>*{width:100%}.employee-upload-row input[type=file]{padding:8px 0}.employee-list-tools{gap:6px}}
+
+
+.daily-report-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding-top:10px}
+.daily-report-form label{display:flex;flex-direction:column;gap:7px;font-size:14px;font-weight:600;color:var(--text,#1e293b)}
+.daily-report-form input,.daily-report-form textarea{width:100%;min-width:0;border:1px solid #d7e0ea;border-radius:10px;padding:12px 13px;font:inherit;font-weight:400;background:#fff;color:#172033;box-sizing:border-box}
+.daily-report-form input:focus,.daily-report-form textarea:focus{outline:2px solid #b7d7f8;border-color:#3b82f6}
+.daily-report-wide{grid-column:1/-1}
+.daily-report-actions{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding-top:4px}
+.daily-report-actions .primary-btn{display:inline-flex;align-items:center;gap:8px}
+.daily-report-row{padding:15px 16px;border-bottom:1px solid #e8edf3}
+.daily-report-row:last-child{border-bottom:0}
+.daily-report-row-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.daily-report-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.daily-report-metrics span{display:flex;flex-direction:column;gap:3px;background:#f5f8fc;border-radius:9px;padding:10px;font-size:12px;color:#64748b}
+.daily-report-metrics b{font-size:14px;color:#172033;overflow-wrap:anywhere}
+@media(max-width:640px){.daily-report-form{grid-template-columns:1fr;gap:12px}.daily-report-wide,.daily-report-actions{grid-column:auto}.daily-report-actions{align-items:stretch}.daily-report-actions>*{justify-content:center}.daily-report-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
