@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, RefreshCw, Search, Store, MapPin, Phone, UserRound } from 'lucide-react';
+import { Plus, RefreshCw, Search, Store, MapPin, Phone, UserRound, ShoppingCart } from 'lucide-react';
 import { supabase } from './lib/supabase';
+import OrderMaking from './OrderMaking';
 
 const emptyForm = { shop_name: '', shopkeeper_name: '', mobile_number: '', route_name: '', cluster_name: '', shop_address: '', area_id: '' };
 
@@ -14,6 +15,7 @@ export default function OutletManager({ profile, areas = [], userId }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [selectedOutlet, setSelectedOutlet] = useState(null);
 
   const load = async () => {
     setLoading(true); setError('');
@@ -51,6 +53,8 @@ export default function OutletManager({ profile, areas = [], userId }) {
     return rows.filter(x => [x.shop_name,x.shopkeeper_name,x.mobile_number,x.route_name,x.cluster_name,x.shop_address].some(v => String(v || '').toLowerCase().includes(q)));
   }, [rows, search]);
 
+  if (selectedOutlet) return <OrderMaking outlet={selectedOutlet} onBack={() => setSelectedOutlet(null)} profile={profile} userId={userId} />;
+
   return <div className="outlet-module">
     <div className="notice"><Store size={19}/><div><strong>নতুন আউটলেট যোগ করুন</strong><p>দোকানের প্রয়োজনীয় ৬টি তথ্য দিয়ে সেভ করুন। পরে অর্ডার মেকিংয়ে এই দোকান নির্বাচন করা যাবে।</p></div></div>
     {error && <div className="admin-alert">{error}</div>}{notice && <div className="admin-success">{notice}</div>}
@@ -70,7 +74,7 @@ export default function OutletManager({ profile, areas = [], userId }) {
     <div className="employee-search"><Search size={17}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="দোকান, মোবাইল, রুট বা ক্লাস্টার দিয়ে খুঁজুন"/></div>
     <section className="team-list-card">
       {loading ? <p className="area-state">লোড হচ্ছে…</p> : filtered.length === 0 ? <p className="area-state">কোনো আউটলেট পাওয়া যায়নি।</p> : filtered.map(x=><article className="outlet-row" key={x.id}>
-        <div className="outlet-icon"><Store size={19}/></div><div className="outlet-copy"><strong>{x.shop_name}</strong><small><UserRound size={12}/> {x.shopkeeper_name}　<Phone size={12}/> {x.mobile_number}</small><small><MapPin size={12}/> {x.route_name} · {x.cluster_name}</small><small>{x.shop_address}</small></div>
+        <div className="outlet-icon"><Store size={19}/></div><div className="outlet-copy"><strong>{x.shop_name}</strong><small><UserRound size={12}/> {x.shopkeeper_name}　<Phone size={12}/> {x.mobile_number}</small><small><MapPin size={12}/> {x.route_name} · {x.cluster_name}</small><small>{x.shop_address}</small><button className="outlet-order-btn" onClick={()=>setSelectedOutlet(x)}>এই দোকানে অর্ডার করুন <ShoppingCart size={15}/></button></div>
       </article>)}
       <p className="outlet-count">মোট আউটলেট: {filtered.length.toLocaleString('bn-BD')}</p>
     </section>
