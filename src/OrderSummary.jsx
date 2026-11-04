@@ -23,6 +23,13 @@ export default function OrderSummary({ profile, userId, areas = [] }) {
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Dhaka' });
+  const [returnDate, setReturnDate] = useState(today);
+  const [returnQty, setReturnQty] = useState({});
+  const [returnReason, setReturnReason] = useState({});
+  const [returnCondition, setReturnCondition] = useState({});
+  const [returnBusy, setReturnBusy] = useState(false);
+  const [returnNotice, setReturnNotice] = useState('');
 
   const load = async () => {
     setLoading(true); setError('');
@@ -109,6 +116,52 @@ export default function OrderSummary({ profile, userId, areas = [] }) {
   const selectedProfit = selectedRetail - Number(selected?.net_value || 0);
   const selectedProfitPercent = Number(selected?.net_value || 0) > 0 ? selectedProfit / Number(selected.net_value) * 100 : 0;
   const routes = [...new Set(outlets.filter(o => !areaFilter || o.area_id === areaFilter).filter(o => role !== 'SO' || o.created_by === userId).map(o => o.route_name).filter(Boolean))].sort();
+  const returnOrderIds = useMemo(() => new Set(orders.filter(o =>
+    role === 'SO' && o.created_by === userId &&
+    String(o.order_date || o.created_at || '').slice(0, 10) === returnDate &&
+    String(o.status || 'submitted').toLowerCase() !== 'cancelled'
+  ).map(o => o.id)), [orders, role, userId, returnDate]);
+  const returnSkuRows = useMemo(() => {
+    const map = new Map();
+    items.filter(i => returnOrderIds.has(i.order_id)).forEach(i => {
+      const sku = skuById[i.sku_id] || {};
+      const id = i.sku_id;
+      if (!id) return;
+      const row = map.get(id) || { id, code: sku.sku_code || '—', name: sku.product_name || i.product_name || 'SKU', size: sku.product_size || i.product_size || '', ordered: 0, rate: Number(i.retailer_per_piece_rate || i.per_piece_rate || sku.retailer_per_piece_rate || 0) };
+      row.ordered += Number(i.total_pieces || 0) + Number(i.free_pieces || 0);
+      map.set(id, row);
+    });
+    return [...map.values()].sort((a,b) => a.name.localeCompare(b.name));
+  }, [items, returnOrderIds, skuById]);
+  const returnTotalPieces = returnSkuRows.reduce((sum, s) => sum + Number(returnQty[s.id] || 0), 0);
+  const returnTotalValue = returnSkuRows.reduce((sum, s) => sum + Number(returnQty[s.id] || 0) * s.rate, 0);
+  const submitMarketReturn = async e => {
+    e.preventDefault(); setError(''); setReturnNotice('');
+    const selectedReturns = returnSkuRows.filter(s => Number(returnQty[s.id] || 0) > 0);
+    if (!selectedReturns.length) { setError('কমপক্ষে একটি অর্ডারকৃত SKU-এর ফেরত পিস লিখুন।'); return; }
+    if (!returnDate) { setError('ফেরতের তারিখ নির্বাচন করুন।'); return; }
+    for (const s of selectedReturns) {
+      if (!returnReason[s.id]) { setError(s.name + ' পণ্যের ফেরতের কারণ নির্বাচন করুন।'); return; }
+      if (!returnCondition[s.id]) { setError(s.name + ' পণ্যের অবস্থা নির্বাচন করুন।'); return; }
+    }
+    setReturnBusy(true);
+    const { data, error: rpcError } = await supabase.rpc('submit_market_return', {
+      p_return_date: returnDate,
+      p_notes: 'Order Summary থেকে Market Return',
+      p_items: selectedReturns.map(s => ({
+        sku_id: s.id,
+        quantity_pieces: Number(returnQty[s.id]),
+        return_reason: returnReason[s.id],
+        product_condition: returnCondition[s.id]
+      }))
+    });
+    setReturnBusy(false);
+    if (rpcError) setError('Market Return Submit হয়নি: ' + rpcError.message);
+    else {
+      setReturnNotice('Market Return সফলভাবে জমা হয়েছে। রিটার্ন আইডি: ' + data + '। ভালো পণ্য বিক্রয়যোগ্য স্টকে এবং ড্যামেজ/মেয়াদোত্তীর্ণ পণ্য আলাদা স্টকে যোগ হয়েছে।');
+      setReturnQty({}); setReturnReason({}); setReturnCondition({});
+    }
+  };
 
   if (selected) return <div className="order-summary-module">
     <button className="back-link" onClick={() => setSelected(null)}><ArrowLeft size={17}/> অর্ডার লিস্টে ফিরে যান</button>
@@ -129,6 +182,25 @@ export default function OrderSummary({ profile, userId, areas = [] }) {
     <div className="order-summary-stats"><div><span>মোট অর্ডার</span><strong>{visibleOrders.length.toLocaleString('bn-BD')}</strong></div><div><span>মোট নেট ভ্যালু</span><strong>{money(orderTotals.value)}</strong></div><div><span>মোট ডিসকাউন্ট</span><strong>{money(orderTotals.discount)}</strong></div><div><span>মোট বাকি</span><strong>{money(orderTotals.balance)}</strong></div></div>
     <section className="admin-panel-card"><div className="section-title"><h3>দোকানভিত্তিক অর্ডার লিস্ট</h3></div>{loading?<p className="area-state">অর্ডার লোড হচ্ছে…</p>:visibleOrders.length===0?<p className="area-state">এই ফিল্টারে কোনো অর্ডার পাওয়া যায়নি।</p>:<div className="table-responsive"><table className="permission-table order-summary-table"><thead><tr><th>তারিখ</th><th>দোকানের নাম</th><th>রুট</th><th>SO</th><th>অর্ডার ভ্যালু</th><th>দেখুন</th></tr></thead><tbody>{visibleOrders.map(o=>{const outlet=outletById[o.outlet_id]||{};const person=personById[o.created_by]||{};return <tr key={o.id}><td>{dateText(o.order_date||o.created_at)}</td><td><strong>{outlet.shop_name||'দোকান'}</strong><small className="table-sub">{outlet.shopkeeper_name||''}</small></td><td>{outlet.route_name||'—'}</td><td>{person.full_name||person.employee_id||'—'}</td><td><strong>{money(o.net_value)}</strong></td><td><button className="admin-refresh" onClick={()=>setSelected(o)}><Eye size={15}/> View</button></td></tr>})}</tbody></table></div>}</section>
     <section className="admin-panel-card"><div className="section-title"><h3>মোট SKU ভিত্তিক অর্ডার সামারি</h3><span className="muted">{skuSummary.length} SKU</span></div>{skuSummary.length===0?<p className="area-state">SKU অর্ডার ডেটা নেই।</p>:<div className="table-responsive"><table className="permission-table"><thead><tr><th>SKU কোড</th><th>পণ্যের নাম</th><th>কার্টন</th><th>ডজন</th><th>পিস</th><th>ফ্রি পিস</th><th>আনুমানিক ভ্যালু</th></tr></thead><tbody>{skuSummary.map(s=><tr key={s.id}><td>{s.code}</td><td>{s.name}<small className="table-sub">{s.size}</small></td><td>{s.cartons.toLocaleString('en-BD')}</td><td>{s.dozens.toLocaleString('en-BD')}</td><td>{s.pieces.toLocaleString('en-BD')}</td><td>{s.free.toLocaleString('en-BD')}</td><td>{money(s.value)}</td></tr>)}</tbody></table></div>}</section>
+
+    {role === 'SO' && <form onSubmit={submitMarketReturn}>
+      <div className="section-title"><h2>অর্ডার সামারি থেকে Market Return Entry</h2></div>
+      <section className="admin-panel-card">
+        <div className="notice"><Package size={18}/><div><strong>শুধু নির্বাচিত দিনের অর্ডার সামারিতে থাকা SKU ফেরত দেওয়া যাবে</strong><p>ভালো পণ্য বিক্রয়যোগ্য DB Stock-এ; ড্যামেজ ও মেয়াদোত্তীর্ণ পণ্য আলাদা Non-Saleable Stock-এ জমা হবে।</p></div></div>
+        <label>অর্ডারের তারিখ / ফেরতের তারিখ<input type="date" value={returnDate} onChange={e=>{setReturnDate(e.target.value);setReturnQty({});setReturnReason({});setReturnCondition({});}} required/></label>
+      </section>
+      {returnNotice && <div className="admin-success">{returnNotice}</div>}
+      {returnSkuRows.length === 0 ? <section className="admin-panel-card"><p className="area-state">এই তারিখে আপনার কোনো সাবমিট করা অর্ডার পাওয়া যায়নি। অর্ডার থাকলে সেই তারিখের SKU এখানে আসবে।</p></section> :
+      returnSkuRows.map(s => <section className="sku-order-card" key={s.id}>
+        <div className="sku-order-title"><div><strong>{s.name}</strong><small>{s.code} · {s.size} · অর্ডার হয়েছে {s.ordered.toLocaleString('en-BD')} পিস</small></div><div className="sku-order-rate"><strong>{money(s.rate)}</strong><small>প্রতি পিস</small></div></div>
+        <div className="order-top-fields">
+          <label>ফেরত পরিমাণ (পিস)<input type="number" min="0" step="1" inputMode="numeric" value={returnQty[s.id] || ''} onChange={e=>setReturnQty(v=>({...v,[s.id]:Math.max(0,Math.floor(Number(e.target.value)||0))}))} placeholder="0"/></label>
+          <label>ফেরতের কারণ<select value={returnReason[s.id] || ''} onChange={e=>setReturnReason(v=>({...v,[s.id]:e.target.value}))}><option value="">কারণ নির্বাচন</option><option value="unsold">বিক্রি না হওয়া পণ্য</option><option value="damaged">ড্যামেজ পণ্য</option><option value="expired">মেয়াদোত্তীর্ণ</option><option value="packaging">প্যাকেট সমস্যা</option><option value="wrong_supply">ভুল পণ্য সরবরাহ</option><option value="other">অন্যান্য</option></select></label>
+          <label>পণ্যের অবস্থা<select value={returnCondition[s.id] || ''} onChange={e=>setReturnCondition(v=>({...v,[s.id]:e.target.value}))}><option value="">অবস্থা নির্বাচন</option><option value="saleable">ভালো / বিক্রয়যোগ্য</option><option value="damaged">ড্যামেজ / বিক্রয় অযোগ্য</option><option value="expired">মেয়াদোত্তীর্ণ / বিক্রয় অযোগ্য</option></select></label>
+        </div>
+      </section>)}
+      <section className="admin-panel-card order-totals"><div><span>মোট ফেরত পিস</span><strong>{returnTotalPieces.toLocaleString('en-BD')}</strong></div><div><span>মোট রিটার্ন মূল্য</span><strong>{money(returnTotalValue)}</strong></div><div><span>IMS / Secondary থেকে সমন্বয়</span><strong>{money(returnTotalValue)}</strong></div><button className="primary-btn order-submit" type="submit" disabled={returnBusy || !returnTotalPieces || !returnSkuRows.length}>{returnBusy ? 'Submit হচ্ছে…' : 'Market Return Submit করুন'} <Save size={17}/></button></section>
+    </form>}
     <p className="admin-footnote">SO নিজের অর্ডার, ASM নিজের Area, এবং RSM সব Area-র অর্ডার দেখবেন। ডেটাবেজের RLS নীতিমালাও একইভাবে সীমাবদ্ধ থাকতে হবে।</p>
   </div>;
 }
