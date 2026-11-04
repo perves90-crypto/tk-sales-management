@@ -22,12 +22,13 @@ export default function TargetAchievement({ profile, userId }) {
   const [areas, setAreas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [warning, setWarning] = useState('');
   const [areaFilter, setAreaFilter] = useState('all');
   const role = String(profile?.role || '').toUpperCase();
   const bounds = monthBounds(month);
 
   const load = async () => {
-    setLoading(true); setError('');
+    setLoading(true); setError(''); setWarning('');
     try {
       let targetQuery = supabase.from('targets').select('id,target_date,target_period,employee_id,area_id,order_target,ims_target').gte('target_date', bounds.start).lte('target_date', bounds.end).order('target_date');
       let reportQuery = supabase.from('sales_reports').select('id,so_id,area_id,report_date,visit_count,productive_visit,order_memo,order_value,ims_memo,ims_value,status').gte('report_date', bounds.start).lte('report_date', bounds.end).order('report_date');
@@ -43,11 +44,13 @@ export default function TargetAchievement({ profile, userId }) {
         supabase.from('profiles').select('id,employee_id,full_name,role,area_id,manager_id').eq('active', true),
         supabase.from('areas').select('id,name').eq('active', true)
       ]);
-      if (t.error) throw new Error('Target: ' + t.error.message);
       if (r.error) throw new Error('Sales report: ' + r.error.message);
-      if (p.error) throw new Error('Team: ' + p.error.message);
-      if (a.error) throw new Error('Area: ' + a.error.message);
-      setTargets(t.data || []); setReports(r.data || []); setPeople(p.data || []); setAreas(a.data || []);
+      if (t.error) setWarning('Target টেবিল থেকে তথ্য পাওয়া যায়নি: ' + t.error.message + '। Sales Achievement রিপোর্ট আলাদাভাবে দেখানো হচ্ছে।');
+      if (p.error || a.error) setWarning(old => [old, 'কর্মী বা Area-এর নাম লোড হয়নি; পরিমাণের হিসাব দেখা যাবে।'].filter(Boolean).join(' '));
+      setTargets(t.error ? [] : (t.data || []));
+      setReports(r.data || []);
+      setPeople(p.error ? [] : (p.data || []));
+      setAreas(a.error ? [] : (a.data || []));
     } catch (e) { setError(e.message || 'তথ্য লোড করা যায়নি।'); }
     finally { setLoading(false); }
   };
@@ -107,7 +110,7 @@ export default function TargetAchievement({ profile, userId }) {
     });
     const ranking = [...rows].sort((a,b)=>b.imsPct-a.imsPct);
     return { rows, summaryRows, daily:Object.values(daily).sort((a,b)=>a.date.localeCompare(b.date)), ranking,
-      orderTarget:total('orderTarget'), imsTarget:total('imsTarget'), orderActual:total('orderActual'), imsActual:total('imsActual') };
+      orderTarget:total('orderTarget'), imsTarget:total('imsTarget'), orderActual:summaryRows.length ? total('orderActual') : reports.filter(r=>areaFilter==='all'||r.area_id===areaFilter).reduce((s,r)=>s+Number(r.order_value||0),0), imsActual:summaryRows.length ? total('imsActual') : reports.filter(r=>areaFilter==='all'||r.area_id===areaFilter).reduce((s,r)=>s+Number(r.ims_value||0),0) };
   }, [targets,reports,people,areas,areaFilter]);
 
   const exportExcel = () => {
@@ -130,6 +133,7 @@ export default function TargetAchievement({ profile, userId }) {
     <div className="notice"><Target size={19}/><div><strong>{title} · {role} Panel</strong><p>আপনার Role ও Supabase RLS অনুযায়ী অনুমোদিত Target এবং Sales Report দেখানো হচ্ছে। Target না থাকলে Achievement-কে Target হিসেবে ধরে নেওয়া হবে না।</p></div></div>
     <div className="target-toolbar"><label><CalendarDays size={16}/> মাস নির্বাচন <input type="month" value={month} onChange={e=>setMonth(e.target.value)}/></label>{role!=='SO'&&<label>Area <select value={areaFilter} onChange={e=>setAreaFilter(e.target.value)}><option value="all">সব Area</option>{areas.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</select></label>}<button className="admin-refresh" onClick={load}><RefreshCw size={14}/> Refresh</button></div>
     <div className="target-tabs">{tabs.map(([key,label])=><button key={key} className={tab===key?'selected':''} onClick={()=>setTab(key)}>{label}</button>)}</div>
+    {warning && <div className="admin-alert">{warning}</div>}
     {loading?<div className="team-list-card"><p className="area-state">Target ও Achievement লোড হচ্ছে…</p></div>:error?<div className="admin-alert">তথ্য পাওয়া যায়নি: {error}</div>:<>
       {tab==='overview'&&<><div className="stats-grid"><StatCard label="Order Target" value={money(model.orderTarget)} note="নির্বাচিত মাসের Target" icon={Target}/><StatCard label="Order Achievement" value={money(model.orderActual)} note={pct(model.orderActual,model.orderTarget).toFixed(1)+'% অর্জন'} icon={TrendingUp}/><StatCard label="IMS Target" value={money(model.imsTarget)} note="নির্বাচিত মাসের Target" icon={Target}/><StatCard label="IMS Achievement" value={money(model.imsActual)} note={pct(model.imsActual,model.imsTarget).toFixed(1)+'% অর্জন'} icon={TrendingUp}/><StatCard label="Order Shortfall / Plus" value={money(model.orderActual-model.orderTarget)} note="Achievement − Target" icon={TrendingDown}/><StatCard label="IMS Shortfall / Plus" value={money(model.imsActual-model.imsTarget)} note="Achievement − Target" icon={TrendingDown}/></div>
       <div className="area-list-card"><h3>Target বনাম Achievement</h3>{[['Order',model.orderTarget,model.orderActual],['IMS',model.imsTarget,model.imsActual]].map(([label,target,actual])=><div className="target-progress-row" key={label}><div><strong>{label}</strong><span>{money(actual)} / {money(target)} · {pct(actual,target).toFixed(1)}%</span></div><div className="target-track"><i style={{width:Math.min(100,pct(actual,target))+'%'}}/></div></div>)}</div></>}
