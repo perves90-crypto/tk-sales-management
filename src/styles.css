@@ -114,3 +114,20 @@
 .export-card .primary-btn,.export-card .admin-refresh{display:inline-flex;margin:10px 10px 0 0;align-items:center;gap:8px}
 @media(max-width:760px){.target-toolbar{align-items:stretch;flex-direction:column}.target-toolbar label{justify-content:space-between}.target-toolbar input,.target-toolbar select{min-width:150px}.target-progress-row>div:first-child{font-size:11px}.target-tabs button{font-size:10px;padding:8px 10px}}
 @media print{.sidebar,.topbar,.target-toolbar,.target-tabs,.integration-card,footer,.welcome-row,.export-card button{display:none!important}.main-area{margin:0}.content{padding:0}.area-list-card,.stat-card{break-inside:avoid}}
+
+
+/* Outlet registration */
+.outlet-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.outlet-form label{display:flex;flex-direction:column;gap:6px;font-size:11px;font-weight:700;color:#526a74;min-width:0}
+.outlet-form input,.outlet-form select,.outlet-form textarea{width:100%;box-sizing:border-box;min-width:0;border:1px solid #dce5ea;border-radius:9px;padding:11px 12px;background:#fff;color:#294653;font:inherit;font-weight:400;outline:none}
+.outlet-form input:focus,.outlet-form select:focus,.outlet-form textarea:focus{border-color:#15988a;box-shadow:0 0 0 3px #15988a18}
+.outlet-wide{grid-column:1/-1}
+.outlet-form .primary-btn{display:flex;align-items:center;justify-content:center;gap:8px}
+.outlet-row{display:flex;align-items:flex-start;gap:11px;padding:13px 2px;border-bottom:1px solid #edf1f2}
+.outlet-row:last-of-type{border-bottom:0}
+.outlet-icon{width:38px;height:38px;flex:none;border-radius:10px;background:#eaf7f4;color:#128579;display:grid;place-items:center}
+.outlet-copy{min-width:0;flex:1}
+.outlet-copy strong{display:block;font-size:13px;color:#25434e;margin-bottom:5px}
+.outlet-copy small{display:flex;align-items:center;gap:4px;flex-wrap:wrap;font-size:10px;line-height:1.7;color:#81919a;margin-top:3px;overflow-wrap:anywhere}
+.outlet-count{border-top:1px solid #edf1f2;padding-top:10px;margin:8px 0 0;text-align:right;font-size:10px;color:#71818d}
+@media(max-width:640px){.outlet-form{grid-template-columns:1fr;gap:11px}.outlet-wide{grid-column:auto}.outlet-row{gap:9px}.outlet-copy strong{font-size:12px}}
