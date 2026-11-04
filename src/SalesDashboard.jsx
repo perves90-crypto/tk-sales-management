@@ -15,7 +15,8 @@ function Metrics({ title, rows, nonExecutionValue }) {
   const strike = productive ? memos / productive * 100 : 0;
   const orderValue = sum(rows, 'order_value');
   const imsValue = sum(rows, 'ims_value');
-  const nePct = orderValue ? nonExecutionValue / orderValue * 100 : 0;
+  const neBase = sum(rows, 'previous_order_value');
+  const nePct = neBase ? nonExecutionValue / neBase * 100 : 0;
   const cards = [
     ['IMS Value', money(imsValue), Activity],
     ['Order Value', money(orderValue), BarChart3],
@@ -67,7 +68,7 @@ export default function SalesDashboard({ profile, userId }) {
           const prior = previous[row.so_id];
           const nonExec = prior == null ? 0 : Math.max(0, Number(prior) - Number(row.order_value || 0));
           previous[row.so_id] = Number(row.order_value || 0);
-          return { ...row, non_execution_value: nonExec };
+          return { ...row, previous_order_value: prior == null ? 0 : Number(prior), non_execution_value: nonExec };
         });
         setAllRows(enriched);
       }
