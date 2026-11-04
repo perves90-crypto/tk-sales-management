@@ -45,6 +45,7 @@ export default function OrderMaking({ outlet, onBack, profile, userId }) {
   const net=Math.max(0,gross-Math.max(0,Number(discount)||0));
   const balance=net-Math.max(0,Number(paid)||0);
   const shopkeeperProfit=Math.round((retailValue-net)*100)/100;
+  const shopkeeperProfitPercent=net>0?(shopkeeperProfit/net)*100:0;
   const submit=async e=>{
     e.preventDefault();setError('');setNotice('');
     if(!userId)return setError('লগইন সেশন পাওয়া যায়নি।');
@@ -86,7 +87,7 @@ export default function OrderMaking({ outlet, onBack, profile, userId }) {
         <div><span>MRP অনুযায়ী সম্ভাব্য বিক্রয় মূল্য</span><strong>{money(retailValue)}</strong></div>
         <label>ডিসকাউন্ট (৳)<input type="number" min="0" step="0.01" value={discount} onChange={e=>setDiscount(e.target.value)}/></label>
         <div><span>নেট অর্ডার মূল্য</span><strong>{money(net)}</strong></div>
-        <div className="balance-total"><span>দোকানদারের সম্ভাব্য লাভ (MRP − নেট ক্রয়মূল্য)</span><strong>{money(shopkeeperProfit)}</strong></div>
+        <div className="shopkeeper-profit-highlight"><span className="shopkeeper-profit-label">দোকানদারের সম্ভাব্য লাভ</span><strong className="shopkeeper-profit-amount">{money(shopkeeperProfit)}</strong><span className="shopkeeper-profit-percent">ক্রয়মূল্যের ওপর লাভ: {shopkeeperProfitPercent.toLocaleString("en-BD",{minimumFractionDigits:2,maximumFractionDigits:2})}%</span><small>লাভের হার = লাভ ÷ নেট ক্রয়মূল্য × ১০০</small></div>
         <div><span>আজ জমা</span><strong>{money(paid)}</strong></div>
         <div className="balance-total"><span>বাকি</span><strong>{money(balance)}</strong></div>
         <label className="order-notes">নোট (ঐচ্ছিক)<textarea rows="2" value={notes} onChange={e=>setNotes(e.target.value)}/></label>
