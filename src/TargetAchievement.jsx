@@ -7,7 +7,7 @@ const dhakaToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Dhak
 const money = n => '৳' + Math.round(Number(n || 0)).toLocaleString('bn-BD');
 const number = n => Number(n || 0).toLocaleString('bn-BD');
 const pct = (a, b) => b ? (Number(a || 0) / Number(b) * 100) : 0;
-const monthBounds = month => ({ start: month + '-01', end: new Date(Number(month.slice(0,4)), Number(month.slice(5,7)), 0).toISOString().slice(0,10) });
+const monthBounds = month => ({ start: month + '-01', end: new Date(Date.UTC(Number(month.slice(0,4)), Number(month.slice(5,7)), 0)).toISOString().slice(0,10) });
 
 function StatCard({ label, value, note, icon: Icon }) {
   return <div className="stat-card"><div className="stat-top"><span>{label}</span><div className="stat-icon"><Icon size={18}/></div></div><strong className="stat-value">{value}</strong><small>{note}</small></div>;
@@ -76,7 +76,8 @@ export default function TargetAchievement({ profile, userId }) {
         actualRows
       };
     }).filter(r => areaFilter==='all' || r.area_id===areaFilter);
-    const total = key => rows.reduce((s,r)=>s+r[key],0);
+    const summaryRows = rows.filter(r => { const hasEmployeeTargets = rows.some(x => x.area_id === r.area_id && x.employee_id); return hasEmployeeTargets ? !!r.employee_id : true; });
+    const total = key => summaryRows.reduce((s,r)=>s+r[key],0);
     const daily = {};
     reports.filter(r=>areaFilter==='all'||r.area_id===areaFilter).forEach(r=>{
       const d=daily[r.report_date] ||= {date:r.report_date,order:0,ims:0,visits:0,productive:0,memos:0,imsMemos:0};
@@ -85,7 +86,7 @@ export default function TargetAchievement({ profile, userId }) {
       d.memos+=Number(r.order_memo||0); d.imsMemos+=Number(r.ims_memo||0);
     });
     const ranking = [...rows].sort((a,b)=>b.imsPct-a.imsPct);
-    return { rows, daily:Object.values(daily).sort((a,b)=>a.date.localeCompare(b.date)), ranking,
+    return { rows, summaryRows, daily:Object.values(daily).sort((a,b)=>a.date.localeCompare(b.date)), ranking,
       orderTarget:total('orderTarget'), imsTarget:total('imsTarget'), orderActual:total('orderActual'), imsActual:total('imsActual') };
   }, [targets,reports,people,areas,areaFilter]);
 
