@@ -120,7 +120,7 @@ export default function DailySalesReport({ profile, userId }) {
 
     setBusy(true);
     const payload = {
-      so_id: userId, area_id: profile.area_id, report_date: form.report_date,
+      so_id: userId, area_id: profile.area_id, report_date: form.report_date, status: 'pending_asm',
       visit_count: Number(form.visit_count), productive_visit: Number(form.productive_visit),
       order_memo: Number(form.order_memo), order_value: Number(form.order_value),
       ims_memo: Number(form.ims_memo), ims_value: Number(form.ims_value),
