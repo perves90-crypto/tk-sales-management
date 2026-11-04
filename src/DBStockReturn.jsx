@@ -24,7 +24,7 @@ export default function DBStockReturn({profile,userId}){
  const dbs=useMemo(()=>mappings.filter(x=>!selectedDb||x.db_code===selectedDb),[mappings,selectedDb]);
  const currentMap=dbs.length===1?dbs[0]:mappings.find(x=>x.db_code===selectedDb);
  const stockBySku=useMemo(()=>{const out={};stock.filter(x=>!selectedDb||x.db_code===selectedDb).forEach(x=>{out[x.sku_id]=(out[x.sku_id]||0)+Number(x.stock_pieces||0);});return out;},[stock,selectedDb]);
- const rows=skus.map(s=>{const ledger=stock.find(x=>x.sku_id===s.id&&(!selectedDb||x.db_code===selectedDb))||{};return {...s,stockPieces:stockBySku[s.id]||0,damagedPieces:Number(ledger.damaged_stock_pieces||0),expiredPieces:Number(ledger.expired_stock_pieces||0)};});
+ const rows=skus.map(s=>{const ledger=stock.filter(x=>x.sku_id===s.id&&(!selectedDb||x.db_code===selectedDb));return {...s,stockPieces:stockBySku[s.id]||0,damagedPieces:ledger.reduce((a,x)=>a+Number(x.damaged_stock_pieces||0),0),expiredPieces:ledger.reduce((a,x)=>a+Number(x.expired_stock_pieces||0),0)};});
  const setQuantity=(id,value)=>setQty(v=>({...v,[id]:Math.max(0,Math.floor(Number(value)||0))}));
  const selected=skus.filter(s=>Number(qty[s.id]||0)>0);
  const totalPieces=selected.reduce((a,s)=>a+Number(qty[s.id]),0);
