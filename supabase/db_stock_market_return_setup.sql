@@ -68,8 +68,11 @@ declare v_order public.sales_orders%rowtype; v_map public.so_distributor_mapping
 begin
  select * into v_order from public.sales_orders where id=new.order_id;
  if v_order.status='cancelled' then return new; end if;
+ if v_order.created_by is null then return new; end if;
  select * into v_map from public.so_distributor_mappings where so_profile_id=v_order.created_by and area_id=v_order.area_id and active=true;
- if not found then raise exception 'এই SO-এর জন্য সক্রিয় DB Mapping নেই। আগে SO–Distributor Mapping সম্পন্ন করুন।'; end if;
+ -- Do not block an order if mapping is missing or the order was entered by a non-SO user.
+ -- Stock deduction is posted only when a valid active SO-to-DB mapping exists.
+ if not found then return new; end if;
  select * into v_sku from public.skus where id=new.sku_id;
  v_qty:=coalesce(new.total_pieces,0)+coalesce(new.free_pieces,0);
  if v_qty>0 then
