@@ -39,13 +39,13 @@ export default function OrderSummary({ profile, userId, areas = [] }) {
       setOutlets(outletRes.data || []);
       setSkus(skuRes.data || []);
       setPeople(profileRes.data || []);
-      let fetchedOrders = orderRes.data || [];
+      let fetchedOrders = (orderRes.data || []).filter(o => String(o.status || 'submitted').toLowerCase() !== 'cancelled');
       if (role === 'SO') fetchedOrders = fetchedOrders.filter(o => o.created_by === userId);
       if (role === 'ASM' && profile?.area_id) fetchedOrders = fetchedOrders.filter(o => o.area_id === profile.area_id);
       setOrders(fetchedOrders);
       const ids = fetchedOrders.map(o => o.id).filter(Boolean);
       if (ids.length) {
-        const { data, error: itemError } = await supabase.from('sales_order_items').select('*').in('sales_order_id', ids);
+        const { data, error: itemError } = await supabase.from('sales_order_items').select('*').in('order_id', ids);
         if (itemError) throw itemError;
         setItems(data || []);
       } else setItems([]);
@@ -73,7 +73,7 @@ export default function OrderSummary({ profile, userId, areas = [] }) {
   }), [orders, outletById, areaFilter, routeFilter, dateFrom, dateTo, search, personById]);
 
   const visibleIds = useMemo(() => new Set(visibleOrders.map(o => o.id)), [visibleOrders]);
-  const visibleItems = useMemo(() => items.filter(i => visibleIds.has(i.sales_order_id)), [items, visibleIds]);
+  const visibleItems = useMemo(() => items.filter(i => visibleIds.has(i.order_id)), [items, visibleIds]);
   const orderTotals = useMemo(() => visibleOrders.reduce((a, o) => {
     a.value += Number(o.net_value || 0);
     a.gross += Number(o.gross_value || 0);
@@ -92,19 +92,19 @@ export default function OrderSummary({ profile, userId, areas = [] }) {
       row.dozens += Number(i.dozen_qty || 0);
       row.pieces += Number(i.piece_qty || 0);
       row.free += Number(i.free_pieces || 0);
-      const perPiece = Number(sku.retailer_per_piece_rate || i.retailer_per_piece_rate || i.unit_rate || 0);
+      const perPiece = Number(i.retailer_per_piece_rate || i.per_piece_rate || sku.retailer_per_piece_rate || 0);
       const pack = Number(sku.pieces_per_carton || 0);
       row.value += (Number(i.carton_qty || 0) * pack + Number(i.dozen_qty || 0) * 12 + Number(i.piece_qty || 0)) * perPiece;
       map.set(id, row);
     });
     return [...map.values()].sort((a,b) => a.name.localeCompare(b.name));
   }, [visibleItems, skuById]);
-  const selectedItems = selected ? items.filter(i => i.sales_order_id === selected.id) : [];
+  const selectedItems = selected ? items.filter(i => i.order_id === selected.id) : [];
   const selectedOutlet = selected ? (outletById[selected.outlet_id] || {}) : {};
   const selectedRetail = selectedItems.reduce((sum, i) => {
     const sku = skuById[i.sku_id] || {};
     const count = Number(i.carton_qty || 0) * Number(sku.pieces_per_carton || 0) + Number(i.dozen_qty || 0) * 12 + Number(i.piece_qty || 0);
-    return sum + (count + Number(i.free_pieces || 0)) * Number(sku.mrp || i.mrp || 0);
+    return sum + (count + Number(i.free_pieces || 0)) * Number(i.mrp || sku.mrp || 0);
   }, 0);
   const selectedProfit = selectedRetail - Number(selected?.net_value || 0);
   const selectedProfitPercent = Number(selected?.net_value || 0) > 0 ? selectedProfit / Number(selected.net_value) * 100 : 0;
@@ -113,7 +113,7 @@ export default function OrderSummary({ profile, userId, areas = [] }) {
   if (selected) return <div className="order-summary-module">
     <button className="back-link" onClick={() => setSelected(null)}><ArrowLeft size={17}/> অর্ডার লিস্টে ফিরে যান</button>
     <section className="admin-panel-card order-detail-head"><div><span className="eyebrow">অর্ডার বিস্তারিত</span><h2>{selectedOutlet.shop_name || 'দোকান'}</h2><p>{selectedOutlet.shopkeeper_name || ''} · {selectedOutlet.route_name || 'রুট নেই'} · অর্ডার নং: {selected.order_number || selected.id}</p><small>তারিখ: {dateText(selected.order_date || selected.created_at)}</small></div><span className="status-chip">{selected.status || 'Submitted'}</span></section>
-    <section className="admin-panel-card"><h3>SKU অনুযায়ী অর্ডার</h3><div className="table-responsive"><table className="permission-table"><thead><tr><th>SKU</th><th>কার্টন</th><th>ডজন</th><th>পিস</th><th>ফ্রি</th><th>লাইন মূল্য</th></tr></thead><tbody>{selectedItems.map(i=>{const s=skuById[i.sku_id]||{};const pieces=Number(i.carton_qty||0)*Number(s.pieces_per_carton||0)+Number(i.dozen_qty||0)*12+Number(i.piece_qty||0);const value=pieces*Number(s.retailer_per_piece_rate||i.retailer_per_piece_rate||i.unit_rate||0);return <tr key={i.id}><td>{s.product_name||i.product_name||s.sku_code||i.sku_id}<small className="table-sub">{s.sku_code||''} {s.product_size||''}</small></td><td>{Number(i.carton_qty||0)}</td><td>{Number(i.dozen_qty||0)}</td><td>{Number(i.piece_qty||0)}</td><td>{Number(i.free_pieces||0)}</td><td>{money(value)}</td></tr>})}</tbody></table></div></section>
+    <section className="admin-panel-card"><h3>SKU অনুযায়ী অর্ডার</h3><div className="table-responsive"><table className="permission-table"><thead><tr><th>SKU</th><th>কার্টন</th><th>ডজন</th><th>পিস</th><th>ফ্রি</th><th>লাইন মূল্য</th></tr></thead><tbody>{selectedItems.map(i=>{const s=skuById[i.sku_id]||{};const pieces=Number(i.carton_qty||0)*Number(s.pieces_per_carton||0)+Number(i.dozen_qty||0)*12+Number(i.piece_qty||0);const value=Number(i.line_value || (pieces*Number(i.retailer_per_piece_rate||i.per_piece_rate||s.retailer_per_piece_rate||0)));return <tr key={i.id}><td>{i.product_name||s.product_name||s.sku_code||i.sku_id}<small className="table-sub">{s.sku_code||''} {i.product_size||s.product_size||''}</small></td><td>{Number(i.carton_qty||0)}</td><td>{Number(i.dozen_qty||0)}</td><td>{Number(i.piece_qty||0)}</td><td>{Number(i.free_pieces||0)}</td><td>{money(value)}</td></tr>})}</tbody></table></div></section>
     <section className="admin-panel-card order-detail-totals"><div><span>মোট অর্ডার মূল্য</span><strong>{money(selected.gross_value)}</strong></div><div><span>ডিসকাউন্ট</span><strong>{money(selected.discount_amount)}</strong></div><div><span>নেট অর্ডার মূল্য</span><strong>{money(selected.net_value)}</strong></div><div><span>MRP অনুযায়ী বিক্রয় মূল্য</span><strong>{money(selectedRetail)}</strong></div><div className="shopkeeper-profit-highlight"><span className="shopkeeper-profit-label">দোকানদারের সম্ভাব্য লাভ</span><strong className="shopkeeper-profit-amount">{money(selectedProfit)}</strong><span className="shopkeeper-profit-percent">নেট ক্রয়মূল্যের ওপর লাভ: {pct(selectedProfitPercent)}</span></div><div><span>জমা</span><strong>{money(selected.paid_amount)}</strong></div><div><span>বাকি</span><strong>{money(selected.balance_amount)}</strong></div></section>
   </div>;
 
