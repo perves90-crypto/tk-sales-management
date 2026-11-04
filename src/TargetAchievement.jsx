@@ -60,7 +60,20 @@ export default function TargetAchievement({ profile, userId }) {
     const rows = targets.map(t => {
       const person = t.employee_id ? peopleMap[t.employee_id] : null;
       const areaId = t.area_id || person?.area_id || null;
-      const actualRows = reports.filter(r => t.employee_id ? r.so_id === t.employee_id : r.area_id === areaId);
+      const periodText = String(t.target_period || '').toLowerCase();
+      const actualRows = reports.filter(r => {
+        const sameOwner = t.employee_id ? r.so_id === t.employee_id : r.area_id === areaId;
+        if (!sameOwner) return false;
+        if (periodText.includes('daily') || periodText.includes('day') || periodText.includes('দিন')) return r.report_date === t.target_date;
+        if (periodText.includes('weekly') || periodText.includes('week') || periodText.includes('সপ্তাহ')) {
+          const date = new Date(t.target_date + 'T00:00:00Z');
+          const day = (date.getUTCDay() + 6) % 7;
+          const start = new Date(date); start.setUTCDate(date.getUTCDate() - day);
+          const end = new Date(start); end.setUTCDate(start.getUTCDate() + 6);
+          return r.report_date >= start.toISOString().slice(0,10) && r.report_date <= end.toISOString().slice(0,10);
+        }
+        return r.report_date.slice(0,7) === month;
+      });
       const orderActual = actualRows.reduce((s,r)=>s+Number(r.order_value||0),0);
       const imsActual = actualRows.reduce((s,r)=>s+Number(r.ims_value||0),0);
       return {
@@ -76,7 +89,14 @@ export default function TargetAchievement({ profile, userId }) {
         actualRows
       };
     }).filter(r => areaFilter==='all' || r.area_id===areaFilter);
-    const summaryRows = rows.filter(r => { const hasEmployeeTargets = rows.some(x => x.area_id === r.area_id && x.employee_id); return hasEmployeeTargets ? !!r.employee_id : true; });
+    const summaryRows = rows.filter(r => {
+      const sameOwner = rows.filter(x => x.area_id === r.area_id && x.employee_id === r.employee_id);
+      const hasEmployeeTargets = rows.some(x => x.area_id === r.area_id && x.employee_id);
+      if (hasEmployeeTargets !== !!r.employee_id) return false;
+      const rank = x => { const p=String(x.period).toLowerCase(); return (p.includes('daily')||p.includes('day')||p.includes('দিন'))?3:(p.includes('weekly')||p.includes('week')||p.includes('সপ্তাহ'))?2:1; };
+      const maxRank = Math.max(...sameOwner.map(rank));
+      return rank(r) === maxRank;
+    });
     const total = key => summaryRows.reduce((s,r)=>s+r[key],0);
     const daily = {};
     reports.filter(r=>areaFilter==='all'||r.area_id===areaFilter).forEach(r=>{
