@@ -35,6 +35,13 @@ export default function IMSApproveRSM({ profile, userId }) {
     const reportRows = data || [];
     if (reportRows.length) {
       const ids = [...new Set(reportRows.map(r => r.so_id).filter(Boolean))];
+      const dates = [...new Set(reportRows.map(r => r.report_date).filter(Boolean))];
+      const { data: returns, error: returnError } = await supabase.from('market_returns')
+        .select('so_profile_id,return_date,total_value').in('so_profile_id', ids).in('return_date', dates).eq('status', 'submitted');
+      if (returnError) setError(old => [old, 'Market Return সমন্বয় আনা যায়নি: ' + returnError.message].filter(Boolean).join(' | '));
+      const returnTotals = {};
+      (returns || []).forEach(x => { const key = `${x.so_profile_id}|${x.return_date}`; returnTotals[key] = (returnTotals[key] || 0) + Number(x.total_value || 0); });
+      const ids = [...new Set(reportRows.map(r => r.so_id).filter(Boolean))];
       const [{ data: people, error: peopleError }, { data: areas, error: areasError }] = await Promise.all([
         supabase.from('profiles').select('id,employee_id,full_name,role').in('id', ids),
         supabase.from('areas').select('id,name')
@@ -43,7 +50,7 @@ export default function IMSApproveRSM({ profile, userId }) {
       if (areasError) setError(old => [old, 'Area-এর নাম আনা যায়নি: ' + areasError.message].filter(Boolean).join(' | '));
       const byId = Object.fromEntries((people || []).map(p => [p.id, p]));
       const areaById = Object.fromEntries((areas || []).map(a => [a.id, a.name]));
-      setRows(reportRows.map(r => ({ ...r, so: byId[r.so_id] || null, area_name: areaById[r.area_id] || '—' })));
+      setRows(reportRows.map(r => { const returned = returnTotals[`${r.so_id}|${r.report_date}`] || 0; return { ...r, so: byId[r.so_id] || null, area_name: areaById[r.area_id] || '—', market_return_value: returned, net_ims_value: Math.max(0, Number(r.ims_value || 0) - returned) }; }));
     } else setRows([]);
     setLoading(false);
   }, [profile?.role]);
@@ -107,7 +114,7 @@ export default function IMSApproveRSM({ profile, userId }) {
       rows.map(row => <section className="admin-panel-card ims-report-card" key={row.id}>
         <div className="ims-report-header"><div><h3>{row.so?.full_name || 'SO নাম পাওয়া যায়নি'}</h3><p>Employee ID: {row.so?.employee_id || '—'} · Area: {row.area_name} · তারিখ: {row.report_date}</p></div><span className="ims-pending-badge">Pending RSM</span></div>
         {editingId === row.id ? <div className="ims-edit-grid">{fields.map(([key,label,type]) => <label key={key}>{label}<input type={type} min={type==='number'?'0':undefined} step={type==='number'?(key.includes('value')?'0.01':'1'):undefined} value={edit[key] ?? ''} onChange={e=>setEdit(old=>({...old,[key]:e.target.value}))} required /></label>)}<label className="ims-edit-wide">মন্তব্য<textarea rows="2" value={edit.remarks} onChange={e=>setEdit(old=>({...old,remarks:e.target.value}))}/></label><div className="ims-action-row"><button className="admin-refresh" onClick={()=>setEditingId('')}><X size={15}/> বাতিল</button><button className="primary-btn" disabled={busyId===row.id} onClick={()=>saveEdit(row)}><Save size={15}/> Edit সংরক্ষণ</button></div></div> : <>
-          <div className="ims-report-metrics"><span>Market Visit <b>{fmt(row.visit_count)}</b></span><span>Productive Visit <b>{fmt(row.productive_visit)}</b></span><span>Order Memo <b>{fmt(row.order_memo)}</b></span><span>Order Value <b>৳{fmt(row.order_value)}</b></span><span>IMS Memo <b>{fmt(row.ims_memo)}</b></span><span>IMS Value <b>৳{fmt(row.ims_value)}</b></span></div>
+          <div className="ims-report-metrics"><span>Market Visit <b>{fmt(row.visit_count)}</b></span><span>Productive Visit <b>{fmt(row.productive_visit)}</b></span><span>Order Memo <b>{fmt(row.order_memo)}</b></span><span>Order Value <b>৳{fmt(row.order_value)}</b></span><span>IMS Memo <b>{fmt(row.ims_memo)}</b></span><span>মূল IMS <b>৳{fmt(row.ims_value)}</b></span><span>Market Return <b>−৳{fmt(row.market_return_value)}</b></span><span>Net IMS <b>৳{fmt(row.net_ims_value ?? row.ims_value)}</b></span></div>
           {row.remarks && <p className="ims-remarks">মন্তব্য: {row.remarks}</p>}
           <div className="ims-action-row"><button className="ims-edit-btn" disabled={!!busyId} onClick={()=>startEdit(row)}><Pencil size={15}/> Edit</button><button className="ims-delete-btn" disabled={!!busyId} onClick={()=>deleteReport(row)}><Trash2 size={15}/> Delete</button><button className="ims-approve-btn" disabled={!!busyId} onClick={()=>action(row,'approved','Approve')}><CheckCircle2 size={15}/> Approve</button></div>
           <div className="ims-rollback-row"><label>Rollback-এর কারণ<input value={rollbackReason[row.id] || ''} onChange={e=>setRollbackReason(old=>({...old,[row.id]:e.target.value}))} placeholder="ASM-কে সংশোধনের কারণ লিখুন"/></label><button className="ims-rollback-btn" disabled={!!busyId} onClick={()=>action(row,'returned_to_asm','Rollback')}><RotateCcw size={15}/> Rollback</button></div>
