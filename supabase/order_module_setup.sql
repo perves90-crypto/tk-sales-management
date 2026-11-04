@@ -67,7 +67,7 @@ grant select on public.skus to authenticated;
 grant insert, update, delete on public.skus to authenticated;
 grant select, insert, update, delete on public.sales_orders to authenticated;
 grant select, insert, update, delete on public.sales_order_items to authenticated;
-grant usage, select on all sequences in schema public to authenticated;
+grant usage, select on sequence public.sales_orders_order_number_seq to authenticated;
 
 drop policy if exists "authenticated_read_active_skus" on public.skus;
 create policy "authenticated_read_active_skus"
