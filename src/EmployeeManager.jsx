@@ -60,7 +60,15 @@ export default function EmployeeManager({ isAdmin, areas = [] }) {
     if(!file) return setError('প্রথমে Excel ফাইল নির্বাচন করুন।');
     setBusy(true);
     try {
-      const buffer=await file.arrayBuffer();
+      // Use FileReader for Android/mobile browsers where File.arrayBuffer() may fail
+      // after selecting a file from Downloads or a document provider.
+      const buffer = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(reader.error || new Error('ফাইল পড়া যায়নি। আবার ফাইল নির্বাচন করুন।'));
+        reader.onabort = () => reject(new Error('ফাইল পড়া বাতিল হয়েছে। আবার ফাইল নির্বাচন করুন।'));
+        reader.onload = () => resolve(reader.result);
+        reader.readAsArrayBuffer(file);
+      });
       const workbook=XLSX.read(buffer,{type:'array'});
       const sheet=workbook.Sheets[workbook.SheetNames[0]];
       const source=XLSX.utils.sheet_to_json(sheet,{defval:''});
