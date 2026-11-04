@@ -218,9 +218,21 @@ export default function App() {
   const [checking, setChecking] = useState(true);
   useEffect(() => {
     if (!supabase) { setChecking(false); return; }
-    supabase.auth.getSession().then(({data})=>{setSession(data.session);setChecking(false);});
+    let alive = true;
+    const fallback = window.setTimeout(() => { if (alive) setChecking(false); }, 8000);
+    supabase.auth.getSession()
+      .then(({data,error}) => {
+        if (!alive) return;
+        if (error) console.error('Session check:', error.message);
+        setSession(data?.session || null);
+        setChecking(false);
+      })
+      .catch(error => {
+        console.error('Session check failed:', error);
+        if (alive) setChecking(false);
+      });
     const {data: listener} = supabase.auth.onAuthStateChange((_event,nextSession)=>setSession(nextSession));
-    return ()=>listener.subscription.unsubscribe();
+    return ()=>{ alive=false; window.clearTimeout(fallback); listener.subscription.unsubscribe(); };
   }, []);
   if (checking) return <div className="loading-screen"><div className="brand-mark">T.K</div><p>লোড হচ্ছে…</p></div>;
   return session ? <AppShell session={session}/> : <Login onLogin={setSession}/>;
