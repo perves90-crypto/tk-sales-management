@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase, supabaseConfigured } from './lib/supabase';
 import EmployeeManager from './EmployeeManager';
+import DailySalesReport from './DailySalesReport';
 import {
   Activity, ArrowDownToLine, BarChart3, Boxes, CalendarDays, CheckCircle2,
   ChevronRight, ClipboardList, Gauge, LogOut, MapPinned, Menu, Package,
@@ -212,7 +213,7 @@ function AppShell({ session }) {
           </div>
           <div className="section-title"><h2>মডিউলসমূহ</h2><span>যেকোনো মডিউলে চাপ দিন</span></div>
           <div className="module-grid">{navItems.slice(1,8).map(item=>{const Icon=item.icon;return <button className="module-card" key={item.label} onClick={()=>setActive(item.label)}><span className="module-icon"><Icon size={21}/></span><strong>{item.label}</strong><span className="module-arrow"><ChevronRight size={18}/></span></button>})}</div>
-        </> : active === 'সেটিংস' ? <AdminPanel isAdmin={String(profile?.role || '').toUpperCase() === 'RSM'} /> : active === 'টিম / ইউজার' ? <EmployeeManager isAdmin={String(profile?.role || '').toUpperCase() === 'RSM'} areas={areas} /> : <>
+        </> : active === 'সেটিংস' ? <AdminPanel isAdmin={String(profile?.role || '').toUpperCase() === 'RSM'} /> : active === 'টিম / ইউজার' ? <EmployeeManager isAdmin={String(profile?.role || '').toUpperCase() === 'RSM'} areas={areas} /> : active === 'দৈনিক সেলস রিপোর্ট' ? <DailySalesReport profile={profile} userId={session?.user?.id} /> : <>
           <div className="module-detail-card"><div className="module-detail-icon">{(() => { const Icon = navItems.find(item=>item.label===active)?.icon || ClipboardList; return <Icon size={26}/>; })()}</div><h2>{active}</h2><p>এই মডিউলের জন্য প্রয়োজনীয় ফর্ম ও কার্যক্রম পরবর্তী ধাপে যুক্ত করা হবে। বিদ্যমান ডেটাবেজে এই মডিউলের পূর্ণাঙ্গ টেবিল/কলাম নেই অথবা এখনো ডেটা এন্ট্রি চালু করা হয়নি।</p><button className="primary-btn" onClick={()=>setActive('ড্যাশবোর্ড')}>ড্যাশবোর্ডে ফিরে যান <ChevronRight size={17}/></button></div>
         </>}
         <div className="integration-card"><div className="integration-icon"><Package size={22}/></div><div><strong>Supabase সংযোগ</strong><p>{supabaseConfigured ? 'Supabase client সংযুক্ত। তথ্য RLS নীতিমালা মেনে আনা হচ্ছে।' : 'Supabase configuration পাওয়া যায়নি।'}</p></div><span className={'connection-badge '+(supabaseConfigured?'connected':'pending')}>{supabaseConfigured?'Configured':'Pending'}</span></div>
