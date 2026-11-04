@@ -23,6 +23,12 @@ export default function OrderSummary({ profile, userId, areas = [] }) {
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [returnDate, setReturnDate] = useState(new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Dhaka'}));
+  const [returnQty, setReturnQty] = useState({});
+  const [returnReason, setReturnReason] = useState({});
+  const [returnCondition, setReturnCondition] = useState({});
+  const [returnBusy, setReturnBusy] = useState(false);
+  const [returnNotice, setReturnNotice] = useState('');
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Dhaka' });
   const [returnDate, setReturnDate] = useState(today);
   const [returnQty, setReturnQty] = useState({});
@@ -116,6 +122,31 @@ export default function OrderSummary({ profile, userId, areas = [] }) {
   const selectedProfit = selectedRetail - Number(selected?.net_value || 0);
   const selectedProfitPercent = Number(selected?.net_value || 0) > 0 ? selectedProfit / Number(selected.net_value) * 100 : 0;
   const routes = [...new Set(outlets.filter(o => !areaFilter || o.area_id === areaFilter).filter(o => role !== 'SO' || o.created_by === userId).map(o => o.route_name).filter(Boolean))].sort();
+  const returnOrderIds = useMemo(() => new Set(orders.filter(o => role === 'SO' && o.created_by === userId && String(o.order_date || o.created_at || '').slice(0,10) === returnDate && String(o.status || 'submitted').toLowerCase() !== 'cancelled').map(o => o.id)), [orders, role, userId, returnDate]);
+  const returnSkuRows = useMemo(() => {
+    const map = new Map();
+    items.filter(i => returnOrderIds.has(i.order_id)).forEach(i => {
+      const sku = skuById[i.sku_id] || {};
+      if (!i.sku_id) return;
+      const row = map.get(i.sku_id) || {id:i.sku_id,code:sku.sku_code||'—',name:sku.product_name||i.product_name||'SKU',size:sku.product_size||i.product_size||'',ordered:0,rate:Number(i.retailer_per_piece_rate||i.per_piece_rate||sku.retailer_per_piece_rate||0)};
+      row.ordered += Number(i.total_pieces||0)+Number(i.free_pieces||0);
+      map.set(i.sku_id,row);
+    });
+    return [...map.values()].sort((a,b)=>a.name.localeCompare(b.name));
+  }, [items, returnOrderIds, skuById]);
+  const returnTotalPieces = returnSkuRows.reduce((a,s)=>a+Number(returnQty[s.id]||0),0);
+  const returnTotalValue = returnSkuRows.reduce((a,s)=>a+Number(returnQty[s.id]||0)*s.rate,0);
+  const submitMarketReturn = async e => {
+    e.preventDefault(); setError(''); setReturnNotice('');
+    const chosen=returnSkuRows.filter(s=>Number(returnQty[s.id]||0)>0);
+    if(!chosen.length) return setError('কমপক্ষে একটি SKU-এর ফেরত পিস লিখুন।');
+    for(const s of chosen){if(!returnReason[s.id]) return setError(s.name+' পণ্যের ফেরতের কারণ দিন।');if(!returnCondition[s.id]) return setError(s.name+' পণ্যের অবস্থা দিন।');}
+    setReturnBusy(true);
+    const {data,error:rpcError}=await supabase.rpc('submit_market_return',{p_return_date:returnDate,p_notes:'Order Summary থেকে Market Return',p_items:chosen.map(s=>({sku_id:s.id,quantity_pieces:Number(returnQty[s.id]),return_reason:returnReason[s.id],product_condition:returnCondition[s.id]}))});
+    setReturnBusy(false);
+    if(rpcError) setError('Market Return Submit হয়নি: '+rpcError.message);
+    else {setReturnNotice('Market Return জমা হয়েছে। রিটার্ন আইডি: '+data+'। ভালো পণ্য বিক্রয়যোগ্য স্টকে এবং ড্যামেজ/মেয়াদোত্তীর্ণ পণ্য আলাদা স্টকে যোগ হয়েছে।');setReturnQty({});setReturnReason({});setReturnCondition({});}
+  };
   const returnOrderIds = useMemo(() => new Set(orders.filter(o =>
     role === 'SO' && o.created_by === userId &&
     String(o.order_date || o.created_at || '').slice(0, 10) === returnDate &&
