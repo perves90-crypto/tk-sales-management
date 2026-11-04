@@ -38,7 +38,7 @@ export default function DBStockReturn({profile,userId}){
   const {data,error:e2}=await supabase.rpc('submit_market_return',{p_return_date:date,p_notes:notes,p_items:selected.map(s=>({sku_id:s.id,quantity_pieces:Number(qty[s.id])}))});
   setSaving(false);
   if(e2)setError('Market Return Submit হয়নি: '+e2.message);
-  else{setNotice('Market Return সফলভাবে Submit হয়েছে। রিটার্ন নং: '+data+'। DB Stock ও Secondary/IMS হিসাব আপডেট হয়েছে।');setQty({});setNotes('');await load();}
+  else{setNotice('Market Return সফলভাবে Submit হয়েছে। রিটার্ন নং: '+data+'। DB Stock আপডেট হয়েছে; একই তারিখের IMS Approval-এ Net IMS সমন্বয় দেখাবে।');setQty({});setNotes('');await load();}
  };
  const visibleReturns=returns.filter(x=>!selectedDb||x.db_code===selectedDb);
  return <div className="order-summary-module">
