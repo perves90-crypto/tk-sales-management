@@ -148,3 +148,33 @@
 .order-totals{display:grid;grid-template-columns:1fr 1fr;gap:12px}.order-totals>div{display:flex;flex-direction:column;gap:5px;padding:9px;background:#f8fbfb;border-radius:8px}.order-totals>div span{font-size:10px;color:#75868e}.order-totals>div strong{font:700 15px Inter,sans-serif;color:#284653}.order-totals label{grid-column:1/-1}.order-totals .balance-total{background:#eaf8f1}.order-totals .balance-total strong{color:#14784c}.order-notes textarea{resize:vertical}.order-submit{grid-column:1/-1;width:100%}
 .sku-form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:end;margin-top:14px}.sku-form-heading{font-size:15px;margin:0;color:#203f4c}.sku-derived-rate{display:flex;flex-direction:column;gap:4px;background:#eaf8f1;border-radius:9px;padding:10px}.sku-derived-rate small{font-size:10px;color:#648078}.sku-derived-rate strong{font:700 15px Inter,sans-serif;color:#14796d}.sku-list-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 2px;border-bottom:1px solid #edf1f2}.sku-list-row>div{min-width:0}.sku-list-row strong,.sku-list-row small{display:block;overflow-wrap:anywhere}.sku-list-row strong{font-size:12px;color:#25434e}.sku-list-row small{font-size:10px;color:#809099;margin-top:4px}.sku-toggle{display:flex;align-items:center;gap:5px;border:0;background:#eaf8f1;color:#14796d;border-radius:8px;padding:7px 9px;font-size:10px;white-space:nowrap}.sku-toggle:disabled{opacity:.5}
 @media(max-width:760px){.outlet-row{gap:9px}.outlet-order-btn{width:100%}.order-top-fields{grid-template-columns:1fr}.sku-qty-grid{gap:6px}.sku-qty-grid input{padding:9px 3px;font-size:12px}.sku-qty-grid label{font-size:9px}.sku-order-card{padding:11px}.order-totals{grid-template-columns:1fr 1fr}.sku-form{grid-template-columns:1fr}.sku-list-row{align-items:flex-start}.sku-list-row small{font-size:9px}}
+
+/* Role-based order summary */
+.order-summary-module{display:grid;gap:14px;min-width:0}
+.order-filter-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.order-filter-heading h3{display:flex;align-items:center;gap:7px;margin:0;font-size:15px;color:#234450}
+.order-summary-filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px}
+.order-summary-filters label{display:flex;flex-direction:column;gap:6px;font-size:12px;color:#526b75}
+.order-summary-filters input,.order-summary-filters select{width:100%;min-width:0;border:1px solid #dce6e9;border-radius:9px;padding:10px;background:#fff;color:#203e49}
+.order-summary-filters .order-search-field{grid-column:span 2}
+.order-summary-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.order-summary-stats>div{display:flex;flex-direction:column;gap:7px;min-width:0;padding:14px;border-radius:13px;background:linear-gradient(135deg,#ffffff,#eef7f5);border:1px solid #e0ece9;box-shadow:0 5px 16px #173b4810}
+.order-summary-stats span,.order-detail-totals span{font-size:11px;color:#627984}
+.order-summary-stats strong{font-size:clamp(13px,2vw,19px);color:#176b5a;overflow-wrap:anywhere}
+.table-responsive{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.order-summary-table{min-width:680px}
+.table-sub{display:block;margin-top:4px;font-size:10px;color:#81919a}
+.order-detail-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.order-detail-head h2{margin:6px 0;font-size:21px;color:#23434e}
+.order-detail-head p{margin:0 0 5px;color:#5b737c;font-size:12px}
+.order-detail-head small{color:#81919a;font-size:11px}
+.order-detail-totals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.order-detail-totals>div{display:flex;flex-direction:column;gap:6px;padding:12px;background:#f7fafb;border-radius:10px;min-width:0}
+.order-detail-totals>div strong{font-size:15px;color:#284653;overflow-wrap:anywhere}
+.shopkeeper-profit-highlight{display:flex!important;flex-direction:column;gap:6px!important;padding:17px!important;border-radius:13px!important;background:linear-gradient(135deg,#087f5b,#16a078)!important;color:#fff!important;box-shadow:0 8px 22px #087f5b30}
+.shopkeeper-profit-highlight .shopkeeper-profit-label{font-size:13px;font-weight:700;color:#e8fff7}
+.shopkeeper-profit-highlight .shopkeeper-profit-amount{font-size:clamp(25px,4vw,34px);line-height:1.2;font-weight:800;color:#fff!important}
+.shopkeeper-profit-highlight .shopkeeper-profit-percent{align-self:flex-start;padding:5px 9px;border-radius:20px;background:#ffffff25;color:#fff;font-weight:700;font-size:12px}
+.shopkeeper-profit-highlight small{color:#e3fff4;font-size:10px}
+@media(max-width:760px){.order-summary-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.order-summary-filters .order-search-field{grid-column:1/-1}.order-summary-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.order-detail-totals{grid-template-columns:1fr 1fr}.order-detail-head{flex-direction:column}.order-summary-table{min-width:620px}}
+@media(max-width:390px){.order-summary-filters{grid-template-columns:1fr}.order-summary-filters .order-search-field{grid-column:auto}.order-detail-totals{grid-template-columns:1fr}.order-summary-stats strong{font-size:13px}}
