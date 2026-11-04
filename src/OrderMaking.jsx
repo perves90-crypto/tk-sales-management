@@ -7,6 +7,8 @@ const blankQty = () => ({carton_qty:0,dozen_qty:0,piece_qty:0,free_pieces:0});
 
 export default function OrderMaking({ outlet, onBack, profile, userId }) {
   const [skus,setSkus]=useState([]);
+  const [search,setSearch]=useState('');
+  const [category,setCategory]=useState('সব ক্যাটাগরি');
   const [qty,setQty]=useState({});
   const [discount,setDiscount]=useState('0');
   const [paid,setPaid]=useState('0');
@@ -19,7 +21,7 @@ export default function OrderMaking({ outlet, onBack, profile, userId }) {
 
   const load=async()=>{
     setLoading(true);setError('');
-    const {data,error:e}=await supabase.from('skus').select('id,category,product_name,product_size,pieces_per_carton,carton_rate,per_piece_rate').eq('active',true).order('category').order('product_name');
+    const {data,error:e}=await supabase.from('skus').select('id,sku_code,category,product_name,product_size,pieces_per_carton,retailer_carton_rate,retailer_per_piece_rate').eq('active',true).order('category').order('product_name');
     if(e)setError('SKU লোড হয়নি: '+e.message);else setSkus(data||[]);
     setLoading(false);
   };
@@ -28,10 +30,12 @@ export default function OrderMaking({ outlet, onBack, profile, userId }) {
   const lines=useMemo(()=>skus.map(s=>{
     const q={...blankQty(),...qty[s.id]};
     const pieces=q.carton_qty*Number(s.pieces_per_carton)+q.dozen_qty*12+q.piece_qty;
-    const rate=Number(s.per_piece_rate);
+    const rate=Number(s.retailer_per_piece_rate||0);
     return {...s,...q,totalPieces:pieces,lineValue:Math.round(pieces*rate*100)/100};
   }),[skus,qty]);
   const selected=lines.filter(x=>x.totalPieces>0||x.free_pieces>0);
+  const categories=[...new Set(skus.map(s=>s.category).filter(Boolean))];
+  const visibleLines=lines.filter(s=>(category==='সব ক্যাটাগরি'||s.category===category)&&(`${s.sku_code||''} ${s.product_name} ${s.product_size}`).toLowerCase().includes(search.toLowerCase()));
   const totalPieces=selected.reduce((a,x)=>a+x.totalPieces,0);
   const gross=selected.reduce((a,x)=>a+x.lineValue,0);
   const net=Math.max(0,gross-Math.max(0,Number(discount)||0));
@@ -62,8 +66,12 @@ export default function OrderMaking({ outlet, onBack, profile, userId }) {
         <div className="order-top-fields"><label>অর্ডারের তারিখ<input type="date" value={date} onChange={e=>setDate(e.target.value)} required/></label><label>আজ জমা টাকা (৳)<input type="number" min="0" step="0.01" value={paid} onChange={e=>setPaid(e.target.value)}/></label></div>
       </section>
       <div className="section-title"><h2>SKU অনুযায়ী অর্ডার</h2><button type="button" className="admin-refresh" onClick={load}><RefreshCw size={14}/> রিফ্রেশ</button></div>
-      {loading?<div className="team-list-card"><p className="area-state">SKU লোড হচ্ছে…</p></div>:skus.length===0?<div className="team-list-card"><p className="area-state">এখনো কোনো SKU যোগ করা হয়নি। RSM-কে PDF রেট লিস্ট দিয়ে SKU তালিকা তৈরি করতে হবে।</p></div>:lines.map(s=><section className="sku-order-card" key={s.id}>
-        <div className="sku-order-title"><div><strong>{s.product_name}</strong><small>{s.category} · {s.product_size} · কার্টনে {s.pieces_per_carton} পিস</small></div><div className="sku-order-rate"><strong>{money(s.carton_rate)}</strong><small>কার্টন রেট</small><small>{money(s.per_piece_rate)} / পিস</small></div></div>
+      <section className="admin-panel-card" style={{display:'grid',gridTemplateColumns:'1fr',gap:10,marginBottom:12}}>
+        <input type="search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="আইটেম কোড বা পণ্যের নাম লিখে খুঁজুন"/>
+        <select value={category} onChange={e=>setCategory(e.target.value)}><option>সব ক্যাটাগরি</option>{categories.map(x=><option key={x}>{x}</option>)}</select>
+      </section>
+      {loading?<div className="team-list-card"><p className="area-state">SKU লোড হচ্ছে…</p></div>:skus.length===0?<div className="team-list-card"><p className="area-state">এখনো কোনো SKU পাওয়া যায়নি।</p></div>:visibleLines.map(s=><section className="sku-order-card" key={s.id}>
+        <div className="sku-order-title"><div><strong>{s.product_name}</strong><small>কোড: {s.sku_code||'—'} · {s.category} · {s.product_size} · কার্টনে {s.pieces_per_carton} পিস</small></div><div className="sku-order-rate"><strong>{money(s.retailer_per_piece_rate)}</strong><small>দোকানদার ক্রয় মূল্য / পিস</small></div></div>
         <div className="sku-qty-grid"><label>কার্টন<input type="number" min="0" step="1" inputMode="numeric" value={s.carton_qty||''} placeholder="0" onChange={e=>setField(s.id,'carton_qty',e.target.value)}/></label><label>ডজন<input type="number" min="0" step="1" inputMode="numeric" value={s.dozen_qty||''} placeholder="0" onChange={e=>setField(s.id,'dozen_qty',e.target.value)}/></label><label>পিস<input type="number" min="0" step="1" inputMode="numeric" value={s.piece_qty||''} placeholder="0" onChange={e=>setField(s.id,'piece_qty',e.target.value)}/></label><label>ফ্রি পিস<input type="number" min="0" step="1" inputMode="numeric" value={s.free_pieces||''} placeholder="0" onChange={e=>setField(s.id,'free_pieces',e.target.value)}/></label></div>
         <div className="sku-line-total"><span>মোট বিক্রয় পিস: <b>{s.totalPieces.toLocaleString('en-BD')}</b>{s.free_pieces>0&&<small> · ফ্রি: {s.free_pieces} পিস</small>}</span><strong>{money(s.lineValue)}</strong></div>
       </section>)}
