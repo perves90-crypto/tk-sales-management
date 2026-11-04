@@ -4,6 +4,7 @@ import EmployeeManager from './EmployeeManager';
 import DailySalesReport from './DailySalesReport';
 import IMSApproveASM from './IMSApproveASM';
 import IMSApproveRSM from './IMSApproveRSM';
+import SalesDashboard from './SalesDashboard';
 import {
   Activity, ArrowDownToLine, BarChart3, Boxes, CalendarDays, CheckCircle2,
   ChevronRight, ClipboardList, Gauge, LogOut, MapPinned, Menu, Package,
@@ -199,25 +200,7 @@ function AppShell({ session }) {
       <header className="topbar"><button className="menu-toggle" onClick={()=>setMobileNav(true)}><Menu/></button><div className="crumb">Sales Management <ChevronRight size={14}/> <strong>{active}</strong></div><div className="top-right"><span className="today"><CalendarDays size={16}/> {new Intl.DateTimeFormat('bn-BD',{day:'numeric',month:'short',year:'numeric',timeZone:'Asia/Dhaka'}).format(new Date())}</span><div className="avatar">R</div></div></header>
       <section className="content">
         <div className="welcome-row"><div><p className="eyebrow">T.K FOOD PRODUCTS DISTRIBUTION LIMITED</p><h1>{active}</h1><p className="muted">Jashore Region · Pusti Consumer Division{profile?.full_name ? ` · ${profile.full_name}` : ''}{profile?.role ? ` · ${profile.role}` : ''}</p></div><div className="status-chip"><CheckCircle2 size={16}/> {active === 'ড্যাশবোর্ড' ? 'লাইভ ডেটা সংযুক্ত' : 'মডিউল খোলা হয়েছে'}</div></div>
-        {active === 'ড্যাশবোর্ড' ? <>
-          <div className="notice"><Activity size={19}/><div><strong>প্রাথমিক অ্যাপ কাঠামো</strong><p>বিক্রয় ও টার্গেটের তথ্য এখনো ডেটাবেজে নেই। কোনো কাল্পনিক সংখ্যা দেখানো হচ্ছে না।</p></div></div>
-          <div className="section-title"><h2>রিজিয়ন ওভারভিউ</h2><span>বাস্তব ডেটা</span></div>
-          <div className="stats-grid">
-            <Stat icon={BarChart3} title="Secondary Sales" value="—" note="Sales report নেই"/>
-            <Stat icon={Target} title="Target Achievement" value="—" note="Target data নেই"/>
-            <Stat icon={Users} title="Sales Team" value={team.length ? team.length.toLocaleString('bn-BD') : '১'} note="বর্তমান Profile: ১"/>
-            <Stat icon={CheckCircle2} title="IMS Approval Pending" value={pendingRsmCount.toLocaleString('bn-BD')} note="RSM Review-এর অপেক্ষায়"/>
-          </div>
-          <div className="section-title"><h2>এরিয়া তালিকা</h2><span>Supabase থেকে সরাসরি</span></div>
-          <div className="area-list-card">
-            {areasLoading ? <p className="area-state">এরিয়ার তথ্য লোড হচ্ছে…</p> : areasError ? <p className="area-state area-error">এরিয়ার তথ্য আনা যায়নি: {areasError}</p> : areas.length === 0 ? <p className="area-state">কোনো এরিয়া পাওয়া যায়নি।</p> : <>
-              <div className="area-summary"><strong>{areas.length.toLocaleString('bn-BD')}</strong><span>টি এরিয়া পাওয়া গেছে</span></div>
-              <div className="area-chips">{areas.map(area => <div className="area-chip" key={area.id}><span className="area-dot"/><strong>{area.name}</strong><small>{area.active ? 'সক্রিয়' : 'নিষ্ক্রিয়'}</small></div>)}</div>
-            </>}
-          </div>
-          <div className="section-title"><h2>মডিউলসমূহ</h2><span>যেকোনো মডিউলে চাপ দিন</span></div>
-          <div className="module-grid">{navItems.slice(1,8).map(item=>{const Icon=item.icon;return <button className="module-card" key={item.label} onClick={()=>setActive(item.label)}><span className="module-icon"><Icon size={21}/></span><strong>{item.label}</strong><span className="module-arrow"><ChevronRight size={18}/></span></button>})}</div>
-        </> : active === 'সেটিংস' ? <AdminPanel isAdmin={String(profile?.role || '').toUpperCase() === 'RSM'} /> : active === 'টিম / ইউজার' ? <EmployeeManager isAdmin={String(profile?.role || '').toUpperCase() === 'RSM'} areas={areas} /> : active === 'দৈনিক সেলস রিপোর্ট' ? <DailySalesReport profile={profile} userId={session?.user?.id} /> : active === 'IMS Approve for ASM' ? <IMSApproveASM profile={profile} userId={session?.user?.id} /> : active === 'IMS Approve for RSM' ? <IMSApproveRSM profile={profile} userId={session?.user?.id} /> : <>
+        {active === 'ড্যাশবোর্ড' ? <SalesDashboard profile={profile} userId={session?.user?.id} /> : active === 'সেটিংস' ? <AdminPanel isAdmin={String(profile?.role || '').toUpperCase() === 'RSM'} /> : active === 'টিম / ইউজার' ? <EmployeeManager isAdmin={String(profile?.role || '').toUpperCase() === 'RSM'} areas={areas} /> : active === 'দৈনিক সেলস রিপোর্ট' ? <DailySalesReport profile={profile} userId={session?.user?.id} /> : active === 'IMS Approve for ASM' ? <IMSApproveASM profile={profile} userId={session?.user?.id} /> : active === 'IMS Approve for RSM' ? <IMSApproveRSM profile={profile} userId={session?.user?.id} /> : <>
           <div className="module-detail-card"><div className="module-detail-icon">{(() => { const Icon = navItems.find(item=>item.label===active)?.icon || ClipboardList; return <Icon size={26}/>; })()}</div><h2>{active}</h2><p>এই মডিউলের জন্য প্রয়োজনীয় ফর্ম ও কার্যক্রম পরবর্তী ধাপে যুক্ত করা হবে। বিদ্যমান ডেটাবেজে এই মডিউলের পূর্ণাঙ্গ টেবিল/কলাম নেই অথবা এখনো ডেটা এন্ট্রি চালু করা হয়নি।</p><button className="primary-btn" onClick={()=>setActive('ড্যাশবোর্ড')}>ড্যাশবোর্ডে ফিরে যান <ChevronRight size={17}/></button></div>
         </>}
         <div className="integration-card"><div className="integration-icon"><Package size={22}/></div><div><strong>Supabase সংযোগ</strong><p>{supabaseConfigured ? 'Supabase client সংযুক্ত। তথ্য RLS নীতিমালা মেনে আনা হচ্ছে।' : 'Supabase configuration পাওয়া যায়নি।'}</p></div><span className={'connection-badge '+(supabaseConfigured?'connected':'pending')}>{supabaseConfigured?'Configured':'Pending'}</span></div>
