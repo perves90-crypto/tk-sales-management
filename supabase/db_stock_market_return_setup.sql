@@ -89,7 +89,7 @@ for each row execute function public.record_secondary_stock_movement();
 create or replace function public.submit_market_return(p_return_date date,p_notes text,p_items jsonb)
 returns uuid language plpgsql security definer set search_path=public as $$
 declare v_uid uuid:=auth.uid(); v_role text; v_area uuid; v_map public.so_distributor_mappings%rowtype;
- v_item jsonb; v_sku public.skus%rowtype; v_qty integer; v_total integer:=0; v_value numeric(14,2):=0; v_id uuid; v_rate numeric(14,6); v_line numeric(14,2);
+ v_item jsonb; v_sku public.skus%rowtype; v_qty integer; v_available bigint; v_total integer:=0; v_value numeric(14,2):=0; v_id uuid; v_rate numeric(14,6); v_line numeric(14,2);
 begin
  if v_uid is null then raise exception 'Login required'; end if;
  select role::text,area_id into v_role,v_area from public.profiles where id=v_uid and active=true;
@@ -102,6 +102,8 @@ begin
   if v_qty=0 then continue; end if;
   select * into v_sku from public.skus where id=(v_item->>'sku_id')::uuid and active=true;
   if not found then raise exception 'একটি SKU পাওয়া যায়নি'; end if;
+  select coalesce(sum(quantity_pieces),0)::bigint into v_available from public.db_stock_movements where db_code=v_map.db_code and sku_id=v_sku.id;
+  if v_qty>v_available then raise exception 'SKU %: ফেরত পরিমাণ বর্তমান DB Stock (%)-এর বেশি',v_sku.product_name,v_available; end if;
   v_rate:=coalesce(v_sku.retailer_per_piece_rate,v_sku.per_piece_rate,0);
   v_line:=round(v_qty*v_rate,2); v_total:=v_total+v_qty; v_value:=v_value+v_line;
  end loop;
