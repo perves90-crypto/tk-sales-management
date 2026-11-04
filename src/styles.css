@@ -49,3 +49,18 @@
 .daily-report-metrics span{display:flex;flex-direction:column;gap:3px;background:#f5f8fc;border-radius:9px;padding:10px;font-size:12px;color:#64748b}
 .daily-report-metrics b{font-size:14px;color:#172033;overflow-wrap:anywhere}
 @media(max-width:640px){.daily-report-form{grid-template-columns:1fr;gap:12px}.daily-report-wide,.daily-report-actions{grid-column:auto}.daily-report-actions{align-items:stretch}.daily-report-actions>*{justify-content:center}.daily-report-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+
+/* Daily sales auto KPI preview */
+.kpi-preview-panel{background:#fff;border:1px solid #e3ecef;border-radius:13px;padding:17px;margin:0 0 18px;box-shadow:0 4px 14px #1d445007}
+.kpi-preview-heading{display:flex;align-items:center;justify-content:space-between;color:#118578;margin-bottom:13px}
+.kpi-preview-heading h2{font-size:15px;color:#203f4c;margin:0}.kpi-preview-heading p{font-size:11px;color:#81919a;margin:4px 0 0}
+.kpi-preview-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.kpi-preview-card{min-width:0;padding:13px;border:1px solid #e3ecef;border-radius:11px;background:#f8fbfc}
+.kpi-preview-card>span{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:#53707a}
+.kpi-preview-card>strong{display:block;font-size:23px;line-height:1.35;color:#173c49;margin:9px 0 6px;overflow-wrap:anywhere}
+.kpi-preview-card>small{display:block;font-size:10px;line-height:1.6;color:#81919a}
+.kpi-preview-card.kpi-danger{background:#fff2f0;border-color:#f1c8c2}.kpi-preview-card.kpi-danger>strong,.kpi-preview-card.kpi-danger>span{color:#b43c31}
+.kpi-preview-card.kpi-safe{background:#eefaf3;border-color:#cfeadb}.kpi-preview-card.kpi-safe>strong,.kpi-preview-card.kpi-safe>span{color:#16734d}
+.kpi-note{font-size:10px;line-height:1.7;color:#7b8b94;margin:10px 2px 0}
+@media(max-width:640px){.kpi-preview-panel{padding:13px}.kpi-preview-grid{grid-template-columns:1fr 1fr;gap:8px}.kpi-preview-card{padding:10px}.kpi-preview-card>strong{font-size:19px}.kpi-preview-card>small{font-size:9px}}
