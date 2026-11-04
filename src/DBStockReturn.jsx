@@ -4,7 +4,7 @@ import {supabase} from './lib/supabase';
 const money=n=>'৳'+Number(n||0).toLocaleString('en-BD',{minimumFractionDigits:2,maximumFractionDigits:2});
 export default function DBStockReturn({profile,userId}){
  const role=String(profile?.role||'').toUpperCase(),isRsm=role==='RSM',isAsm=role==='ASM',isSo=role==='SO';
- const [mappings,setMappings]=useState([]),[selectedDb,setSelectedDb]=useState(''),[skus,setSkus]=useState([]),[stock,setStock]=useState([]),[qty,setQty]=useState({}),[returns,setReturns]=useState([]),[date,setDate]=useState(new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Dhaka'})),[notes,setNotes]=useState(''),[loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
+ const [mappings,setMappings]=useState([]),[selectedDb,setSelectedDb]=useState(''),[skus,setSkus]=useState([]),[stock,setStock]=useState([]),[qty,setQty]=useState({}),[returns,setReturns]=useState([]),[date,setDate]=useState(new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Dhaka'})),[notes,setNotes]=useState(''),[loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[stockInType,setStockInType]=useState('opening'),[stockInSku,setStockInSku]=useState(''),[stockInQty,setStockInQty]=useState(''),[stockInNotes,setStockInNotes]=useState(''),[stockInBusy,setStockInBusy]=useState(false);
  const load=async()=>{
   setLoading(true);setError('');
   const [m,s,r,h]=await Promise.all([
@@ -23,7 +23,7 @@ export default function DBStockReturn({profile,userId}){
  useEffect(()=>{if(profile&&userId)load();},[profile?.role,profile?.area_id,userId]);
  const dbs=useMemo(()=>mappings.filter(x=>!selectedDb||x.db_code===selectedDb),[mappings,selectedDb]);
  const currentMap=dbs.length===1?dbs[0]:mappings.find(x=>x.db_code===selectedDb);
- const stockBySku=useMemo(()=>{const out={};stock.filter(x=>!selectedDb||x.db_code===selectedDb).forEach(x=>out[x.sku_id]=Number(x.stock_pieces||0));return out;},[stock,selectedDb]);
+ const stockBySku=useMemo(()=>{const out={};stock.filter(x=>!selectedDb||x.db_code===selectedDb).forEach(x=>{out[x.sku_id]=(out[x.sku_id]||0)+Number(x.stock_pieces||0);});return out;},[stock,selectedDb]);
  const rows=skus.map(s=>({...s,stockPieces:stockBySku[s.id]||0}));
  const setQuantity=(id,value)=>setQty(v=>({...v,[id]:Math.max(0,Math.floor(Number(value)||0))}));
  const selected=skus.filter(s=>Number(qty[s.id]||0)>0);
