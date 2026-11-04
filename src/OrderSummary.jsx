@@ -221,25 +221,6 @@ export default function OrderSummary({ profile, userId, areas = [] }) {
         <label>অর্ডারের তারিখ / ফেরতের তারিখ<input type="date" value={returnDate} onChange={e=>{setReturnDate(e.target.value);setReturnQty({});setReturnReason({});setReturnCondition({});}} required/></label>
       </section>
       {returnNotice && <div className="admin-success">{returnNotice}</div>}
-      {returnSkuRows.length === 0 ? <section className="admin-panel-card"><p className="area-state">এই তারিখে আপনার কোনো সাবমিট করা অর্ডার পাওয়া যায়নি। অর্ডার থাকলে সেই তারিখের SKU এখানে আসবে।</p></section> :
-      returnSkuRows.map(s => <section className="sku-order-card" key={s.id}>
-        <div className="sku-order-title"><div><strong>{s.name}</strong><small>{s.code} · {s.size} · অর্ডার হয়েছে {s.ordered.toLocaleString('en-BD')} পিস</small></div><div className="sku-order-rate"><strong>{money(s.rate)}</strong><small>প্রতি পিস</small></div></div>
-        <div className="order-top-fields">
-          <label>ফেরত পরিমাণ (পিস)<input type="number" min="0" step="1" inputMode="numeric" value={returnQty[s.id] || ''} onChange={e=>setReturnQty(v=>({...v,[s.id]:Math.max(0,Math.floor(Number(e.target.value)||0))}))} placeholder="0"/></label>
-          <label>ফেরতের কারণ<select value={returnReason[s.id] || ''} onChange={e=>setReturnReason(v=>({...v,[s.id]:e.target.value}))}><option value="">কারণ নির্বাচন</option><option value="unsold">বিক্রি না হওয়া পণ্য</option><option value="damaged">ড্যামেজ পণ্য</option><option value="expired">মেয়াদোত্তীর্ণ</option><option value="packaging">প্যাকেট সমস্যা</option><option value="wrong_supply">ভুল পণ্য সরবরাহ</option><option value="other">অন্যান্য</option></select></label>
-          <label>পণ্যের অবস্থা<select value={returnCondition[s.id] || ''} onChange={e=>setReturnCondition(v=>({...v,[s.id]:e.target.value}))}><option value="">অবস্থা নির্বাচন</option><option value="saleable">ভালো / বিক্রয়যোগ্য</option><option value="damaged">ড্যামেজ / বিক্রয় অযোগ্য</option><option value="expired">মেয়াদোত্তীর্ণ / বিক্রয় অযোগ্য</option></select></label>
-        </div>
-      </section>)}
-      <section className="admin-panel-card order-totals"><div><span>মোট ফেরত পিস</span><strong>{returnTotalPieces.toLocaleString('en-BD')}</strong></div><div><span>মোট রিটার্ন মূল্য</span><strong>{money(returnTotalValue)}</strong></div><div><span>IMS / Secondary থেকে সমন্বয়</span><strong>{money(returnTotalValue)}</strong></div><button className="primary-btn order-submit" type="submit" disabled={returnBusy || !returnTotalPieces || !returnSkuRows.length}>{returnBusy ? 'Submit হচ্ছে…' : 'Market Return Submit করুন'} <Save size={17}/></button></section>
-    </form>}
-
-    {role === 'SO' && <form onSubmit={submitMarketReturn}>
-      <div className="section-title"><h2>অর্ডার সামারি থেকে Market Return Entry</h2></div>
-      <section className="admin-panel-card">
-        <div className="notice"><Package size={18}/><div><strong>শুধু নির্বাচিত দিনের অর্ডার সামারিতে থাকা SKU ফেরত দেওয়া যাবে</strong><p>ভালো পণ্য বিক্রয়যোগ্য DB Stock-এ; ড্যামেজ ও মেয়াদোত্তীর্ণ পণ্য আলাদা Non-Saleable Stock-এ জমা হবে।</p></div></div>
-        <label>অর্ডারের তারিখ / ফেরতের তারিখ<input type="date" value={returnDate} onChange={e=>{setReturnDate(e.target.value);setReturnQty({});setReturnReason({});setReturnCondition({});}} required/></label>
-      </section>
-      {returnNotice && <div className="admin-success">{returnNotice}</div>}
       {returnSkuRows.length === 0 ? <section className="admin-panel-card"><p className="area-state">এই তারিখে আপনার কোনো সাবমিট করা অর্ডার পাওয়া যায়নি।</p></section> :
       returnSkuRows.map(s => <section className="sku-order-card" key={s.id}>
         <div className="sku-order-title"><div><strong>{s.name}</strong><small>{s.code} · {s.size} · অর্ডার হয়েছে {s.ordered.toLocaleString('en-BD')} পিস</small></div><div className="sku-order-rate"><strong>{money(s.rate)}</strong><small>প্রতি পিস</small></div></div>
