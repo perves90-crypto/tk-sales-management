@@ -53,11 +53,20 @@ drop policy if exists "read_scoped_market_return_items" on public.market_return_
 create policy "read_scoped_market_return_items" on public.market_return_items for select to authenticated
 using(exists(select 1 from public.market_returns r where r.id=market_return_items.return_id));
 
+-- Return reason and condition; damaged/expired quantities are not saleable stock.
+alter table public.market_return_items add column if not exists return_reason text;
+alter table public.market_return_items add column if not exists product_condition text not null default 'saleable';
+alter table public.db_stock_movements drop constraint if exists db_stock_movements_movement_type_check;
+alter table public.db_stock_movements add constraint db_stock_movements_movement_type_check
+ check (movement_type in ('opening','receipt','secondary','market_return','market_return_damage','market_return_expired','adjustment'));
+
 create or replace view public.db_stock_summary with (security_invoker=true) as
 select m.db_code,m.db_name,m.area_id,m.sku_id,s.sku_code,s.product_name,s.product_size,s.category,
- coalesce(sum(m.quantity_pieces),0)::bigint as stock_pieces,
- coalesce(sum(m.quantity_pieces),0)::numeric / nullif(s.pieces_per_carton,0) as stock_cartons,
- coalesce(sum(m.movement_value),0)::numeric(14,2) as net_stock_value
+ coalesce(sum(case when m.movement_type in ('opening','receipt','secondary','market_return','adjustment') then m.quantity_pieces else 0 end),0)::bigint as stock_pieces,
+ coalesce(sum(case when m.movement_type in ('opening','receipt','secondary','market_return','adjustment') then m.quantity_pieces else 0 end),0)::numeric / nullif(s.pieces_per_carton,0) as stock_cartons,
+ coalesce(sum(case when m.movement_type in ('opening','receipt','secondary','market_return','adjustment') then m.movement_value else 0 end),0)::numeric(14,2) as net_stock_value,
+ coalesce(sum(case when m.movement_type='market_return_damage' then m.quantity_pieces else 0 end),0)::bigint as damaged_stock_pieces,
+ coalesce(sum(case when m.movement_type='market_return_expired' then m.quantity_pieces else 0 end),0)::bigint as expired_stock_pieces
 from public.db_stock_movements m join public.skus s on s.id=m.sku_id
 group by m.db_code,m.db_name,m.area_id,m.sku_id,s.sku_code,s.product_name,s.product_size,s.category,s.pieces_per_carton;
 grant select on public.db_stock_summary to authenticated;
@@ -89,7 +98,7 @@ for each row execute function public.record_secondary_stock_movement();
 create or replace function public.submit_market_return(p_return_date date,p_notes text,p_items jsonb)
 returns uuid language plpgsql security definer set search_path=public as $$
 declare v_uid uuid:=auth.uid(); v_role text; v_area uuid; v_map public.so_distributor_mappings%rowtype;
- v_item jsonb; v_sku public.skus%rowtype; v_qty integer; v_available bigint; v_sku_count integer; v_total integer:=0; v_value numeric(14,2):=0; v_id uuid; v_rate numeric(14,6); v_line numeric(14,2);
+ v_item jsonb; v_sku public.skus%rowtype; v_qty integer; v_sku_count integer; v_total integer:=0; v_value numeric(14,2):=0; v_id uuid; v_rate numeric(14,6); v_line numeric(14,2); v_reason text; v_condition text; v_movement text;
 begin
  if v_uid is null then raise exception 'Login required'; end if;
  select role::text,area_id into v_role,v_area from public.profiles where id=v_uid and active=true;
@@ -104,8 +113,15 @@ begin
   if not found then raise exception 'একটি SKU পাওয়া যায়নি'; end if;
   select count(*) into v_sku_count from jsonb_array_elements(p_items) x where x->>'sku_id'=v_sku.id::text;
   if v_sku_count>1 then raise exception 'একই SKU একাধিকবার পাঠানো যাবে না'; end if;
-  select coalesce(sum(quantity_pieces),0)::bigint into v_available from public.db_stock_movements where db_code=v_map.db_code and sku_id=v_sku.id;
-  if v_qty>v_available then raise exception 'SKU %: ফেরত পরিমাণ বর্তমান DB Stock (%)-এর বেশি',v_sku.product_name,v_available; end if;
+  if not exists (
+   select 1 from public.sales_orders so join public.sales_order_items soi on soi.order_id=so.id
+   where so.created_by=v_uid and so.order_date=coalesce(p_return_date,(now() at time zone 'Asia/Dhaka')::date)
+    and lower(coalesce(so.status,'submitted'))<>'cancelled' and soi.sku_id=v_sku.id
+  ) then raise exception 'এই SKU নির্বাচিত দিনের অর্ডার সামারিতে নেই: %',v_sku.product_name; end if;
+  v_reason:=coalesce(nullif(v_item->>'return_reason',''),'other');
+  v_condition:=coalesce(nullif(v_item->>'product_condition',''),'saleable');
+  if v_reason not in ('unsold','damaged','expired','packaging','wrong_supply','other') then raise exception 'রিটার্নের কারণ সঠিক নয়'; end if;
+  if v_condition not in ('saleable','damaged','expired') then raise exception 'পণ্যের অবস্থা সঠিক নয়'; end if;
   v_rate:=coalesce(v_sku.retailer_per_piece_rate,v_sku.per_piece_rate,0);
   v_line:=round(v_qty*v_rate,2); v_total:=v_total+v_qty; v_value:=v_value+v_line;
  end loop;
@@ -118,10 +134,13 @@ begin
   if v_qty=0 then continue; end if;
   select * into v_sku from public.skus where id=(v_item->>'sku_id')::uuid and active=true;
   v_rate:=coalesce(v_sku.retailer_per_piece_rate,v_sku.per_piece_rate,0); v_line:=round(v_qty*v_rate,2);
-  insert into public.market_return_items(return_id,sku_id,product_name,product_size,quantity_pieces,unit_rate,line_value)
-  values(v_id,v_sku.id,v_sku.product_name,v_sku.product_size,v_qty,v_rate,v_line);
+  v_reason:=coalesce(nullif(v_item->>'return_reason',''),'other');
+  v_condition:=coalesce(nullif(v_item->>'product_condition',''),'saleable');
+  v_movement:=case v_condition when 'damaged' then 'market_return_damage' when 'expired' then 'market_return_expired' else 'market_return' end;
+  insert into public.market_return_items(return_id,sku_id,product_name,product_size,quantity_pieces,unit_rate,line_value,return_reason,product_condition)
+  values(v_id,v_sku.id,v_sku.product_name,v_sku.product_size,v_qty,v_rate,v_line,v_reason,v_condition);
   insert into public.db_stock_movements(db_code,db_name,area_id,sku_id,movement_type,quantity_pieces,reference_type,reference_id,unit_rate,movement_value,created_by)
-  values(v_map.db_code,v_map.db_name,v_area,v_sku.id,'market_return',v_qty,'market_return',v_id,v_rate,v_line,v_uid);
+  values(v_map.db_code,v_map.db_name,v_area,v_sku.id,v_movement,v_qty,'market_return',v_id,v_rate,v_line,v_uid);
  end loop;
  return v_id;
 end $$;
