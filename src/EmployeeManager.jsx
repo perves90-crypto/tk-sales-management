@@ -4,7 +4,7 @@ import { supabase } from './lib/supabase';
 import { UserPlus, Upload, Download, RefreshCw, Search, ShieldCheck } from 'lucide-react';
 
 const clean = value => String(value ?? '').trim();
-const keyOf = value => clean(value).toLowerCase().replace(/[\\s_\\-]+/g, '');
+const keyOf = value => clean(value).toLowerCase().replace(/[\s_-]+/g, '');
 const pick = (row, keys) => {
   const entries = Object.entries(row).reduce((a,[k,v]) => (a[keyOf(k)] = v, a), {});
   for (const key of keys) if (entries[keyOf(key)] !== undefined) return clean(entries[keyOf(key)]);
@@ -85,8 +85,17 @@ export default function EmployeeManager({ isAdmin, areas = [] }) {
         };
       }).filter(r=>r.employee_id||r.full_name);
       if(!employees.length) throw new Error('Excel-এর প্রথম শিটে কোনো কর্মী পাওয়া যায়নি।');
-      const invalid=employees.find(r=>!r.employee_id||!r.full_name||r.password.length<8||!['ASM','SO'].includes(r.role)||(r._areaText&&!r.area_id));
-      if(invalid) throw new Error('Excel-এ ID, নাম, ASM/SO Role, কমপক্ষে ৮ অক্ষরের Password এবং সঠিক Area Name দিন।');
+      const invalidIndex=employees.findIndex(r=>!r.employee_id||!r.full_name||r.password.length<8||!['ASM','SO'].includes(r.role)||(r._areaText&&!r.area_id));
+      if(invalidIndex >= 0) {
+        const r=employees[invalidIndex];
+        const problems=[];
+        if(!r.employee_id) problems.push('Employee ID নেই');
+        if(!r.full_name) problems.push('নাম নেই');
+        if(r.password.length<8) problems.push('Password ৮ অক্ষরের কম বা পড়া যায়নি');
+        if(!['ASM','SO'].includes(r.role)) problems.push('Role অবশ্যই ASM অথবা SO হতে হবে');
+        if(r._areaText&&!r.area_id) problems.push('Area নাম মেলেনি: '+r._areaText+' (Jashore, Jhenaidah, Kushtia, Narail ব্যবহার করুন)');
+        throw new Error('Excel-এর ডেটা সারি '+(invalidIndex+2)+': '+problems.join('; ')+'. কলাম হেডার employee_id, full_name, password, role, area রাখুন।');
+      }
       employees.forEach(r=>delete r._areaText);
       const result=await invokeCreate(employees);
       setMessage(result.message || 'Excel কর্মী আপলোড প্রক্রিয়া সম্পন্ন।');
