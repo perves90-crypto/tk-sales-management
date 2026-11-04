@@ -11,7 +11,8 @@ SELECT
   v.category,
   v.product_name,
   COALESCE(
-    (regexp_match(v.product_name, '([0-9]+(?:\\.[0-9]+)?\\s*(?:gm|kg)|\\([^)]+\\))', 'i'))[1],
+    substring(v.product_name from '[0-9]+[.]?[0-9]*[[:space:]]*[[:alpha:]]{2}'),
+    substring(v.product_name from '[(][^)]*[)]'),
     v.product_name
   ) AS product_size,
   v.pieces_per_carton,
