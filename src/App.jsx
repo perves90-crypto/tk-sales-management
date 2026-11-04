@@ -3,6 +3,7 @@ import { supabase, supabaseConfigured } from './lib/supabase';
 import EmployeeManager from './EmployeeManager';
 import DailySalesReport from './DailySalesReport';
 import IMSApproveASM from './IMSApproveASM';
+import IMSApproveRSM from './IMSApproveRSM';
 import {
   Activity, ArrowDownToLine, BarChart3, Boxes, CalendarDays, CheckCircle2,
   ChevronRight, ClipboardList, Gauge, LogOut, MapPinned, Menu, Package,
