@@ -142,6 +142,7 @@ function AppShell({ session }) {
   const [areasLoading, setAreasLoading] = useState(true);
   const [areasError, setAreasError] = useState('');
   const [profile, setProfile] = useState(null);
+  const [pendingRsmCount, setPendingRsmCount] = useState(0);
   const [configuredMenus,setConfiguredMenus]=useState([]);
   const [team, setTeam] = useState([]);
   const [teamLoading, setTeamLoading] = useState(false);
@@ -163,6 +164,7 @@ function AppShell({ session }) {
     };
     loadDashboardData();
     supabase.from('menu_definitions').select('id,menu_key,label,enabled,sort_order,parent_menu_key').eq('enabled',true).order('sort_order').then(({data})=>{if(mounted)setConfiguredMenus(data||[]);});
+    supabase.from('sales_reports').select('id', { count: 'exact', head: true }).eq('status','pending_rsm').then(({count})=>{if(mounted)setPendingRsmCount(count||0);});
     return () => { mounted = false; };
   }, [session?.user?.id]);
   useEffect(() => {
